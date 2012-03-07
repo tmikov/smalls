@@ -20,24 +20,37 @@
 FileInput::FileInput ( FILE * f )
 {}
 
-int FileInput::fillBuffer ()
+size_t FileInput::fillBuffer ()
 {
-  if (isGood())
+  if (unlikely(!isGood()))
+    return available();
+  
+  if (m_head < m_tail) // Do we have unread data?
   {
-    m_head = m_tail = m_buf;
-
-    size_t len = std::fread( m_buf, 1, BUFSIZE, m_f );
-    m_tail += len;
-    if (len < BUFSIZE)
+    if (m_head > m_buf) // Do we need to shift?
     {
-      if (feof(m_f))
-        m_eof = true;
-      else if (ferror(m_f))
-        m_error = true;
+      size_t avail;
+      memmove( m_buf, m_head, avail = m_tail - m_head );
+      m_head = m_buf;
+      m_tail = m_head + avail;
     }
   }
+  else
+    m_head = m_tail = m_buf;
   
-  return m_head < m_tail ? *m_head++ : -1;
+  size_t toRead = m_buf + BUFSIZE - m_tail;
+  
+  size_t len = std::fread( m_buf, 1, toRead, m_f );
+  m_tail += len;
+  if (len < toRead)
+  {
+    if (feof(m_f))
+      m_eof = true;
+    else if (ferror(m_f))
+      m_error = true;
+  }
+  
+  return available();
 }
 
 CharBufInput::CharBufInput ( const char * str, size_t len )
@@ -58,8 +71,8 @@ CharBufInput::CharBufInput ( const std::string & str )
   m_tail = m_head + str.length();
 }
 
-int CharBufInput::fillBuffer ()
+size_t CharBufInput::fillBuffer ()
 {
   m_eof = true; 
-  return -1;
+  return available();
 }

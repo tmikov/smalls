@@ -56,6 +56,11 @@ void TestUTF8::testUTF8StreamDecoder ( )
 {
   ErrorReporter errors;
   SourceCoords coords;
+  CharBufInput t0("a");
+  UTF8StreamDecoder dec0( t0, errors, coords );
+  CPPUNIT_ASSERT( 'a' == dec0.get() );
+  CPPUNIT_ASSERT_EQUAL( -1, dec0.get() );
+  
   CharBufInput t1(
     "ab"
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E" 
@@ -82,8 +87,9 @@ void TestUTF8::testUTF8StreamDecoder ( )
   );
   UTF8StreamDecoder dec2( t2, errors, coords );
   
-  CPPUNIT_ASSERT_EQUAL( -1, dec2.get() );
+  CPPUNIT_ASSERT_EQUAL( UNICODE_REPLACEMENT_CHARACTER, dec2.get() );
   CPPUNIT_ASSERT_EQUAL( 1, errors.errorCount );
+  CPPUNIT_ASSERT_EQUAL( -1, dec2.get() );
 }
 
 void TestUTF8::testUTF8Encoder ()

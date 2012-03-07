@@ -24,8 +24,10 @@
 #include "IErrorReporter.hpp"
 #include "BufferedInput.hpp"
 
-class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t>
+class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
 {
+  static const unsigned MAX_UTF8_LEN = 4;
+  
   BufferedCharInput & m_in;
   IErrorReporter & m_errors;
   SourceCoords & m_coords;
@@ -37,8 +39,8 @@ public:
   UTF8StreamDecoder ( BufferedCharInput & in, IErrorReporter & errors, SourceCoords & coords );
   
 private:
-  int32_t _readCodePoint ();
-  virtual int32_t fillBuffer ();
+  const unsigned char * _readCodePoint ( const unsigned char * from, int32_t * result );
+  virtual size_t fillBuffer ();
 };
 
 /**
@@ -49,9 +51,15 @@ private:
  */
 size_t encodeUTF8 ( char * dst, uint32_t codePoint );
 
+#define UNICODE_MAX_VALUE    0x10FFFF 
+#define UNICODE_SURROGATE_LO   0xD800
+#define UNICODE_SURROGATE_HI   0xDFFF
+
+#define UNICODE_REPLACEMENT_CHARACTER 0xFFFD
+
 inline bool isValidCodePoint ( uint32_t cp )
 {
-  if (cp >= 0xD800 && cp <= 0xDFFF || cp > 0x10ffff)
+  if (cp >= UNICODE_SURROGATE_LO && cp <= UNICODE_SURROGATE_HI || cp > UNICODE_MAX_VALUE)
     return false;
   return true;
 }

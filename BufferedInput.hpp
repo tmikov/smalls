@@ -21,10 +21,12 @@
 
 #include "base.hpp"
 
-template<typename ELEM, typename RES>
+template<typename ELEM, typename RES, RES _EOF>
 class BufferedInput
 {
 public:
+  static const RES EOFVAL = _EOF;
+  
   BufferedInput ()
   {
     m_head = m_tail = 0;
@@ -32,12 +34,39 @@ public:
   }
   virtual ~BufferedInput () {};
   
-  RES get ()
+  __forceinline RES get ()
   {
     if (likely(m_head != m_tail))
       return *m_head++;
     else
-      return fillBuffer();
+      return slowGet();
+  }
+  
+  __forceinline size_t read ( ELEM * dest, size_t count )
+  {
+     // NOTE: must check for 0 first, as the rest of the code depends on the count being non=0
+    if (unlikely(count == 0))
+      return 0;
+    if (likely(m_tail - m_head >= count))
+    {
+      size_t t = count;
+      do
+        *dest++ = *m_head++;
+      while (--t);
+      return count;
+    }
+    else
+      return slowRead( dest, count );
+  }
+  
+  size_t available () const { return m_tail - m_head; }
+  const ELEM * head () const { return m_head; }
+  const ELEM * tail () const { return m_tail; }
+  
+  void advance ( size_t len )
+  {
+    assert( len <= m_tail - m_head );
+    m_head += len;
   }
   
   bool isGood () const
@@ -55,14 +84,40 @@ public:
     return m_error;
   }
   
+  virtual size_t fillBuffer () = 0;
+  
 protected:  
   bool m_eof, m_error;
-  const ELEM * m_head, * m_tail;
+  ELEM * m_head, * m_tail;
   
-  virtual RES fillBuffer () = 0;
+private:
+  RES    slowGet ();
+  size_t slowRead ( ELEM * dest, size_t count );
 };
 
-class BufferedCharInput : public BufferedInput<unsigned char,int>
+template<typename ELEM, typename RES, RES _EOF>
+__neverinline RES BufferedInput<ELEM,RES,_EOF>::slowGet ()
+{
+  return fillBuffer() != 0 ? *m_head++ : EOFVAL;
+}
+
+
+template<typename ELEM, typename RES, RES _EOF>
+__neverinline size_t BufferedInput<ELEM,RES,_EOF>::slowRead ( ELEM * dest, size_t count )
+{
+  size_t res = 0;
+  do
+  {
+    *dest++ = get();
+    if (!isGood())
+      break;
+    ++res;
+  }
+  while (--count);
+  return res;
+}
+
+class BufferedCharInput : public BufferedInput<unsigned char,int,-1>
 {
 };
 
@@ -73,8 +128,7 @@ class FileInput : public BufferedCharInput
   unsigned char m_buf[BUFSIZE];
 public:
   FileInput ( FILE * f );
-protected:  
-  virtual int fillBuffer ();
+  virtual size_t fillBuffer ();
 };
 
 class CharBufInput : public BufferedCharInput
@@ -82,9 +136,8 @@ class CharBufInput : public BufferedCharInput
 public:
   CharBufInput ( const char * str, size_t len );
   CharBufInput ( const char * str );
-  CharBufInput ( const std::string & str );
-protected:  
-  virtual int fillBuffer ();
+  CharBufInput ( const std::string & str );  
+  virtual size_t fillBuffer ();
 };
 
 

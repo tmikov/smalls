@@ -40,10 +40,13 @@
 
 #ifdef __GNUC__
   #ifndef __forceinline
-    #define __forceinline __attribute__((__always_inline__)) static inline
+    #define __forceinline __attribute__((__always_inline__)) inline
+  #endif
+  #ifndef __neverinline
+    #define __neverinline __attribute__((__noinline__)) inline
   #endif
 #else
-    #define __forceinline static inline
+    #define __forceinline inline
 #endif
 
 #if defined(_MSC_VER)
