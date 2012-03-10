@@ -24,10 +24,12 @@
 #include <stdexcept>
 #include <iostream>
 #include <cstdlib>
-
+#include <errno.h>
 #include <cstdarg>
 #include <cstdio>
 #include <cassert>
+
+#include <string>
 
 #include "gc/gc_cpp.h"
 #include "gc/gc_allocator.h"

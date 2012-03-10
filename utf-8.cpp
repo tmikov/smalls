@@ -19,24 +19,15 @@
 #include <algorithm> // for std::min
 
 
-UTF8StreamDecoder::UTF8StreamDecoder ( BufferedCharInput & in, IErrorReporter & errors, SourceCoords & coords )
-  : m_in( in ), m_errors( errors ), m_coords( coords )
+UTF8StreamDecoder::UTF8StreamDecoder ( FastCharInput & in, IErrorReporter & errors, SourceCoords & coords )
+  : Super( m_thebuf, BUFSIZE ),
+    m_in( in ), m_errors( errors ), m_coords( coords )
 {
 }
 
-size_t UTF8StreamDecoder::fillBuffer ()
+void UTF8StreamDecoder::doRead ( size_t toRead )
 {
-  if (unlikely(!isGood()))
-    return available();
-   
-  if (m_head < m_tail) // Do we have unread data?
-  {
-    if (m_tail == m_buf + BUFSIZE)
-      return available();
-  }
-  else
-    m_head = m_tail = m_buf;
-
+  int32_t * const end = m_tail + toRead;
   for(;;)
   {
     const unsigned char * from, * to;
@@ -57,15 +48,7 @@ size_t UTF8StreamDecoder::fillBuffer ()
         to = buf + avail;
       }
       else
-      {
-        // No more data available
-        if (m_in.isError())
-          m_error = true;
-        else if (m_in.isEof())
-          m_eof = true;
-
-        return available();
-      }
+        return;
     }
     else
     {
@@ -77,10 +60,10 @@ size_t UTF8StreamDecoder::fillBuffer ()
     while (from < to)
     {
       from = _readCodePoint( from, m_tail );
-      if (++m_tail == m_buf + BUFSIZE)
+      if (++m_tail == end)
       {
         m_in.advance( std::min( avail,(size_t)(from - saveFrom) ) );
-        return available();
+        return;
       }
     }
     m_in.advance( std::min(avail,(size_t)(from - saveFrom)) );

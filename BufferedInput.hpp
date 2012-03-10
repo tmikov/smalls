@@ -21,18 +21,27 @@
 
 #include "base.hpp"
 
-template<typename ELEM, typename RES, RES _EOF>
-class BufferedInput
+class io_error : public std::runtime_error
 {
+public:
+  io_error ( const std::string & what ) : runtime_error( what ) {};
+};
+
+template<typename ELEM, typename RES, RES _EOF>
+class FastInput
+{
+protected:
+  ELEM * m_head, * m_tail;
+  
+  FastInput ()
+  {
+    m_head = m_tail = 0;
+  }
+  
 public:
   static const RES EOFVAL = _EOF;
   
-  BufferedInput ()
-  {
-    m_head = m_tail = 0;
-    m_eof = m_error = false;
-  }
-  virtual ~BufferedInput () {};
+  virtual ~FastInput () {};
   
   __forceinline RES get ()
   {
@@ -44,15 +53,10 @@ public:
   
   __forceinline size_t read ( ELEM * dest, size_t count )
   {
-     // NOTE: must check for 0 first, as the rest of the code depends on the count being non=0
-    if (unlikely(count == 0))
-      return 0;
     if (likely(m_tail - m_head >= count))
     {
-      size_t t = count;
-      do
-        *dest++ = *m_head++;
-      while (--t);
+      std::memcpy( dest, m_head, count*sizeof(ELEM) );
+      m_head += count;
       return count;
     }
     else
@@ -69,26 +73,7 @@ public:
     m_head += len;
   }
   
-  bool isGood () const
-  {
-    return !m_eof && !m_error;
-  }
-  
-  bool isEof () const
-  {
-    return m_eof;
-  }
-  
-  bool isError () const
-  {
-    return m_error;
-  }
-  
   virtual size_t fillBuffer () = 0;
-  
-protected:  
-  bool m_eof, m_error;
-  ELEM * m_head, * m_tail;
   
 private:
   RES    slowGet ();
@@ -96,42 +81,93 @@ private:
 };
 
 template<typename ELEM, typename RES, RES _EOF>
-__neverinline RES BufferedInput<ELEM,RES,_EOF>::slowGet ()
+__neverinline RES FastInput<ELEM,RES,_EOF>::slowGet ()
 {
   return fillBuffer() != 0 ? *m_head++ : EOFVAL;
 }
 
 
 template<typename ELEM, typename RES, RES _EOF>
-__neverinline size_t BufferedInput<ELEM,RES,_EOF>::slowRead ( ELEM * dest, size_t count )
+__neverinline size_t FastInput<ELEM,RES,_EOF>::slowRead ( ELEM * dest, size_t count )
 {
+  assert( count != 0 );
   size_t res = 0;
-  do
+  for(;;)
   {
-    *dest++ = get();
-    if (!isGood())
+    size_t len = std::min( available(), count );
+    std::memcpy( dest, m_head, len * sizeof(ELEM) );
+    dest += len;
+    m_head += len;
+    res += len;
+    count -= len;
+    if (!count || !fillBuffer())
       break;
-    ++res;
   }
-  while (--count);
   return res;
 }
 
-class BufferedCharInput : public BufferedInput<unsigned char,int,-1>
+typedef FastInput<unsigned char,int,-1> FastCharInput;
+
+template<typename ELEM, typename RES, RES _EOF>
+class BufferedInput : public FastInput<ELEM,RES,_EOF>
 {
+  typedef FastInput<ELEM,RES,_EOF> Super;
+protected:
+  ELEM * m_buf;
+  size_t m_bufSize;
+  
+  BufferedInput ( ELEM * buf, size_t bufSize )
+    : m_buf( buf ), m_bufSize( bufSize )
+  {}
+  
+public:
+  virtual size_t fillBuffer ();
+protected:
+  /**
+   * Read up to len bytes into m_tail and advance m_tail. Throw io_error on error.
+   * @param len
+   */
+  virtual void doRead ( size_t len ) = 0;
 };
+
+template<typename ELEM, typename RES, RES _EOF>
+size_t BufferedInput<ELEM,RES,_EOF>::fillBuffer ()
+{
+  if (Super::m_head < Super::m_tail) // Do we have unread data?
+  {
+    if (Super::m_head > m_buf) // Do we need to shift?
+    {
+      size_t avail;
+      memmove( m_buf, Super::m_head, (avail = Super::m_tail - Super::m_head)*sizeof(ELEM) );
+      Super::m_head = m_buf;
+      Super::m_tail = Super::m_head + avail;
+    }
+  }
+  else
+    Super::m_head = Super::m_tail = m_buf;
+  
+  doRead( m_buf + m_bufSize - Super::m_tail );
+ 
+  return Super::available();
+}
+
+typedef BufferedInput<unsigned char,int,-1> BufferedCharInput;
 
 class FileInput : public BufferedCharInput
 {
   FILE * m_f;
-  static const unsigned BUFSIZE = 4096;
-  unsigned char m_buf[BUFSIZE];
+  unsigned char m_thebuf[4096];
 public:
   FileInput ( FILE * f );
-  virtual size_t fillBuffer ();
+protected:
+  /**
+   * Read up to len bytes into m_tail and advance m_tail. Throw io_error on error.
+   * @param len
+   */
+  virtual void doRead ( size_t len );
 };
 
-class CharBufInput : public BufferedCharInput
+class CharBufInput : public FastCharInput
 {
 public:
   CharBufInput ( const char * str, size_t len );

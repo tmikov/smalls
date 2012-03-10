@@ -26,21 +26,23 @@
 
 class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
 {
+  typedef BufferedInput<int32_t,int32_t,-1> Super;
   static const unsigned MAX_UTF8_LEN = 4;
   
-  BufferedCharInput & m_in;
+  FastCharInput & m_in;
   IErrorReporter & m_errors;
   SourceCoords & m_coords;
   
   static const unsigned BUFSIZE = 256;
-  int32_t m_buf[BUFSIZE];
+  int32_t m_thebuf[BUFSIZE];
   
 public:
-  UTF8StreamDecoder ( BufferedCharInput & in, IErrorReporter & errors, SourceCoords & coords );
+  UTF8StreamDecoder ( FastCharInput & in, IErrorReporter & errors, SourceCoords & coords );
   
 private:
   const unsigned char * _readCodePoint ( const unsigned char * from, int32_t * result );
-  virtual size_t fillBuffer ();
+protected:  
+  virtual void doRead ( size_t len );
 };
 
 /**
