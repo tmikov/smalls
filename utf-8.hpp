@@ -40,8 +40,18 @@ public:
   UTF8StreamDecoder ( FastCharInput & in, IErrorReporter & errors, SourceCoords & coords );
   
 private:
-  const unsigned char * decodeBuffer ( const unsigned char * from, const unsigned char * to, int32_t * end );
-  const unsigned char * _readCodePoint ( const unsigned char * from, int32_t * result );
+  /**
+   * Decode UTF-8 bytes between 'from' and 'to' (exclusive). There are at least (MAX_UTF8_LEN-1)
+   * valid bytes beyond 'to', so it is always safe to decode a valid UTF-8 character at the end
+   * of the range.
+   *
+   * <p>32-bit output characters are stored in '*this->m_head' which must be updated to point one beyond
+   * the  last converted character. 'outLimit' holds the end of the result buffer. The function
+   * terminates as soon as it is reached.
+   *
+   * @return the next value of 'from'
+   */
+  const unsigned char * decodeBuffer ( const unsigned char * from, const unsigned char * to, int32_t * outLimit );
 protected:  
   virtual void doRead ( size_t len );
 };

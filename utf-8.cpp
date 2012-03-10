@@ -65,110 +65,103 @@ void UTF8StreamDecoder::doRead ( size_t toRead )
 }
 
 const unsigned char * UTF8StreamDecoder::decodeBuffer ( 
-  const unsigned char * from, const unsigned char * to, int32_t * end 
+  const unsigned char * from, const unsigned char * to, int32_t * outLimit 
 )
 {
   int32_t * tail = m_tail;
   while (from < to)
   {
-    from = _readCodePoint( from, tail );
-    if (++tail == end)
+    unsigned ch = from[0];
+    uint32_t result;
+
+    if (likely((ch & 0x80) == 0)) // Ordinary ASCII?
+    {
+      result = ch;
+      ++from;
+    }
+    else if (likely((ch & 0xE0) == 0xC0))
+    {
+      unsigned ch1 = from[1];
+      if (unlikely((ch1 & 0xC0) != 0x80))
+      {
+        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
+        result = UNICODE_REPLACEMENT_CHARACTER;
+      }
+      else
+      {
+        result = ((ch & 0x1F) << 6) | (ch1 & 0x3F);
+        if (unlikely(result <= 0x7F))
+        {
+          m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding" );
+          result = UNICODE_REPLACEMENT_CHARACTER;
+        }
+      }
+      from += 2;
+    }
+    else if (likely((ch & 0xF0) == 0xE0))
+    {
+      int32_t ch1 = from[1];
+      int32_t ch2 = from[2];
+      if (unlikely(((ch1 | ch2) & 0xC0) != 0x80))
+      {
+        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
+        result = UNICODE_REPLACEMENT_CHARACTER;
+      }
+      else
+      {
+        result = ((ch & 0x0F) << 12) | ((ch1 & 0x3F) << 6) | (ch2 & 0x3F);
+        if (unlikely(result <= 0x7FF))
+        {
+          m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding");
+          result = UNICODE_REPLACEMENT_CHARACTER;
+        }
+        if (unlikely(result >= UNICODE_SURROGATE_LO && result <= UNICODE_SURROGATE_HI))
+        {
+          m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 code point 0x%04x", result );
+          result = UNICODE_REPLACEMENT_CHARACTER;
+        }
+      }
+      from += 3;
+    }
+    else if ((ch & 0xF8) == 0xF0)
+    {
+      int32_t ch1 = from[1];
+      int32_t ch2 = from[2];
+      int32_t ch3 = from[3];
+      if (unlikely(((ch1 | ch2 | ch3) & 0xC0) != 0x80)) \
+      {
+        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
+        result = UNICODE_REPLACEMENT_CHARACTER;
+      }
+      else
+      {
+        result = ((ch & 0x07) << 18) | ((ch1 & 0x3F) << 12) | ((ch2 & 0x3F) << 6) | (ch3 & 0x3F);
+        if (unlikely(result <= 0xFFFF))
+        {
+          m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding");
+          result = UNICODE_REPLACEMENT_CHARACTER;
+        }
+        if (unlikely(result > UNICODE_MAX_VALUE))
+        {
+          m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 code point 0x%06x", result );
+          result = UNICODE_REPLACEMENT_CHARACTER;
+        }
+      }
+      from += 4;
+    }
+    else
+    {
+      m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 lead byte 0x%02x", ch );
+      result = UNICODE_REPLACEMENT_CHARACTER;
+      from += 1;
+    }
+    
+    *tail = result;
+    if (++tail == outLimit)
       break;
   }
   m_tail = tail;
   return from;
-}
-
-
-__forceinline const unsigned char * UTF8StreamDecoder::_readCodePoint ( const unsigned char * from, int32_t * res )
-{
-  unsigned ch = from[0];
-  
-  if (likely((ch & 0x80) == 0)) // Ordinary ASCII?
-  {
-    *res = ch;
-    return from+1;
-  }
-  if (likely((ch & 0xE0) == 0xC0))
-  {
-    unsigned ch1 = from[1];
-    uint32_t result;
-    if (unlikely((ch1 & 0xC0) != 0x80))
-    {
-      m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
-      result = UNICODE_REPLACEMENT_CHARACTER;
-    }
-    else
-    {
-      uint32_t result = ((ch & 0x1F) << 6) | (ch1 & 0x3F);
-      if (unlikely(result <= 0x7F))
-      {
-        m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding" );
-        result = UNICODE_REPLACEMENT_CHARACTER;
-      }
-    }
-    *res = result;
-    return from+2;
-  }
-  if (likely((ch & 0xF0) == 0xE0))
-  {
-    int32_t ch1 = from[1];
-    int32_t ch2 = from[2];
-    uint32_t result;
-    if (unlikely(((ch1 | ch2) & 0xC0) != 0x80))
-    {
-      m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
-      result = UNICODE_REPLACEMENT_CHARACTER;
-    }
-    else
-    {
-      result = ((ch & 0x0F) << 12) | ((ch1 & 0x3F) << 6) | (ch2 & 0x3F);
-      if (unlikely(result <= 0x7FF))
-      {
-        m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding");
-        result = UNICODE_REPLACEMENT_CHARACTER;
-      }
-      if (unlikely(result >= UNICODE_SURROGATE_LO && result <= UNICODE_SURROGATE_HI))
-      {
-        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 code point 0x%04x", result );
-        result = UNICODE_REPLACEMENT_CHARACTER;
-      }
-    }
-    *res = result;
-    return from+3;
-  }
-  if ((ch & 0xF8) == 0xF0)
-  {
-    int32_t ch1 = from[1];
-    int32_t ch2 = from[2];
-    int32_t ch3 = from[3];
-    uint32_t result;
-    if (unlikely(((ch1 | ch2 | ch3) & 0xC0) != 0x80)) \
-    {
-      m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
-      result = UNICODE_REPLACEMENT_CHARACTER;
-    }
-    else
-    {
-      result = ((ch & 0x07) << 18) | ((ch1 & 0x3F) << 12) | ((ch2 & 0x3F) << 6) | (ch3 & 0x3F);
-      if (unlikely(result <= 0xFFFF))
-      {
-        m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding");
-        result = UNICODE_REPLACEMENT_CHARACTER;
-      }
-      if (unlikely(result > UNICODE_MAX_VALUE))
-      {
-        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 code point 0x%06x", result );
-        result = UNICODE_REPLACEMENT_CHARACTER;
-      }
-    }
-    *res = result;
-    return from+4;
-  }
-
-  m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 lead byte 0x%02x", ch );
-  *res = UNICODE_REPLACEMENT_CHARACTER;
-  return from + 1;
 }
 
 size_t encodeUTF8 ( char * dst, uint32_t cp )
