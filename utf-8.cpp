@@ -57,18 +57,28 @@ void UTF8StreamDecoder::doRead ( size_t toRead )
     }
 
     const unsigned char * saveFrom = from; 
-    while (from < to)
-    {
-      from = _readCodePoint( from, m_tail );
-      if (++m_tail == end)
-      {
-        m_in.advance( std::min( avail,(size_t)(from - saveFrom) ) );
-        return;
-      }
-    }
-    m_in.advance( std::min(avail,(size_t)(from - saveFrom)) );
+    from = decodeBuffer( from, to, end );
+    m_in.advance( std::min( avail,(size_t)(from - saveFrom) ) );
+    if (m_tail == end)
+      return;
   }
 }
+
+const unsigned char * UTF8StreamDecoder::decodeBuffer ( 
+  const unsigned char * from, const unsigned char * to, int32_t * end 
+)
+{
+  int32_t * tail = m_tail;
+  while (from < to)
+  {
+    from = _readCodePoint( from, tail );
+    if (++tail == end)
+      break;
+  }
+  m_tail = tail;
+  return from;
+}
+
 
 __forceinline const unsigned char * UTF8StreamDecoder::_readCodePoint ( const unsigned char * from, int32_t * res )
 {

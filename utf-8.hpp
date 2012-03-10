@@ -40,6 +40,7 @@ public:
   UTF8StreamDecoder ( FastCharInput & in, IErrorReporter & errors, SourceCoords & coords );
   
 private:
+  const unsigned char * decodeBuffer ( const unsigned char * from, const unsigned char * to, int32_t * end );
   const unsigned char * _readCodePoint ( const unsigned char * from, int32_t * result );
 protected:  
   virtual void doRead ( size_t len );
