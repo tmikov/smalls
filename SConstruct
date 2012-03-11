@@ -8,16 +8,4 @@ env.Append(CCFLAGS=['-O2'])
 env.Append(LIBS=['gc'])
 #env.Append(LIBS=['gcov'])
 
-objs = env.Object( env.Glob("*.cpp") )
-
-tests = env.Object( env.Glob("tests/*.cpp") )
-
-bin = env.Program( "smalls", env.Object("main.cxx") + objs )
-env.Alias('bin', bin)
-
-tests = env.Program( "test-smalls", [objs, tests], LIBS=env['LIBS'] + ['cppunit'] )
-env.Alias('tests',tests)
-
-env.Alias('all', [bin,tests])
-
-
+env.SConscript("SConscript.py", exports='env', variant_dir='out', duplicate=False)
