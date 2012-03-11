@@ -88,7 +88,7 @@ const char * Token::s_reprs[] =
 
 Lexer::Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors )
   : m_fileName( fileName ), m_symbolMap( symbolMap ), m_errors( errors ),
-    m_coords( fileName, 1, 0 ), m_decoder( in, m_errors, m_coords )
+    m_coords( fileName, 1, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
   m_curChar = 0;
   m_savedChar = m_ungetChar = -1;
@@ -97,6 +97,11 @@ Lexer::Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & sym
   m_valueString = NULL;
   
   nextChar();
+}
+
+void Lexer::StreamErrorReporter::error ( off_t offset, const gc_char * message )
+{
+  m_outer.error( "%s at offset %lu", message, (unsigned long)offset );
 }
 
 void Lexer::error ( const gc_char * message, ... )

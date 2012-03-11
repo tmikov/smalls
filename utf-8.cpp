@@ -19,10 +19,11 @@
 #include <algorithm> // for std::min
 
 
-UTF8StreamDecoder::UTF8StreamDecoder ( FastCharInput & in, IErrorReporter & errors, SourceCoords & coords )
-  : Super( m_thebuf, BUFSIZE ),
-    m_in( in ), m_errors( errors ), m_coords( coords )
+UTF8StreamDecoder::UTF8StreamDecoder ( FastCharInput & in, IStreamErrorReporter & errors )
+  : m_in( in ), m_errors( errors )
 {
+  m_buf = m_thebuf;
+  m_bufSize = BUFSIZE;
 }
 
 void UTF8StreamDecoder::doRead ( size_t toRead )
@@ -34,6 +35,8 @@ void UTF8StreamDecoder::doRead ( size_t toRead )
     unsigned char buf[MAX_UTF8_LEN];
     size_t avail;
     
+    m_fromOffset = m_in.offset();
+
     // If there are less than MAX_UTF8_LEN chars available, we have to refill the buffer
     if (likely((avail = m_in.available()) < MAX_UTF8_LEN) &&
         unlikely((avail = m_in.fillBuffer()) < MAX_UTF8_LEN))
@@ -56,9 +59,9 @@ void UTF8StreamDecoder::doRead ( size_t toRead )
       to = m_in.tail() - MAX_UTF8_LEN + 1; // we check earlier we have more than MAX_UTF8_LEN bytes; 
     }
 
-    const unsigned char * saveFrom = from; 
+    m_saveFrom = from; 
     from = decodeBuffer( from, to, end );
-    m_in.advance( std::min( avail,(size_t)(from - saveFrom) ) );
+    m_in.advance( std::min( avail,(size_t)(from - m_saveFrom) ) );
     if (m_tail == end)
       return;
   }
@@ -84,7 +87,7 @@ const unsigned char * UTF8StreamDecoder::decodeBuffer (
       unsigned ch1 = from[1];
       if (unlikely((ch1 & 0xC0) != 0x80))
       {
-        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
+        m_errors.error( m_fromOffset + (from - m_saveFrom), "Invalid UTF-8 continuation byte" );
         result = UNICODE_REPLACEMENT_CHARACTER;
       }
       else
@@ -92,7 +95,7 @@ const unsigned char * UTF8StreamDecoder::decodeBuffer (
         result = ((ch & 0x1F) << 6) | (ch1 & 0x3F);
         if (unlikely(result <= 0x7F))
         {
-          m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding" );
+          m_errors.error( m_fromOffset + (from - m_saveFrom), "Non-canonical UTF-8 encoding" );
           result = UNICODE_REPLACEMENT_CHARACTER;
         }
       }
@@ -102,9 +105,9 @@ const unsigned char * UTF8StreamDecoder::decodeBuffer (
     {
       int32_t ch1 = from[1];
       int32_t ch2 = from[2];
-      if (unlikely(((ch1 | ch2) & 0xC0) != 0x80))
+      if (unlikely( ((ch1 | ch2) & 0x40) != 0 || ((ch1 & ch2) & 0x80) == 0 ))
       {
-        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
+        m_errors.error( m_fromOffset + (from - m_saveFrom), "Invalid UTF-8 continuation byte" );
         result = UNICODE_REPLACEMENT_CHARACTER;
       }
       else
@@ -112,12 +115,12 @@ const unsigned char * UTF8StreamDecoder::decodeBuffer (
         result = ((ch & 0x0F) << 12) | ((ch1 & 0x3F) << 6) | (ch2 & 0x3F);
         if (unlikely(result <= 0x7FF))
         {
-          m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding");
+          m_errors.error( m_fromOffset + (from - m_saveFrom), "Non-canonical UTF-8 encoding");
           result = UNICODE_REPLACEMENT_CHARACTER;
         }
         if (unlikely(result >= UNICODE_SURROGATE_LO && result <= UNICODE_SURROGATE_HI))
         {
-          m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 code point 0x%04x", result );
+          m_errors.error( m_fromOffset + (from - m_saveFrom), formatGCStr("Invalid UTF-8 code point 0x%04x", result) );
           result = UNICODE_REPLACEMENT_CHARACTER;
         }
       }
@@ -128,9 +131,9 @@ const unsigned char * UTF8StreamDecoder::decodeBuffer (
       int32_t ch1 = from[1];
       int32_t ch2 = from[2];
       int32_t ch3 = from[3];
-      if (unlikely(((ch1 | ch2 | ch3) & 0xC0) != 0x80)) \
+      if (unlikely( ((ch1 | ch2 | ch3) & 0x40) != 0 || ((ch1 & ch2 & ch3) & 0x80) == 0 ))
       {
-        m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 continuation byte" );
+        m_errors.error( m_fromOffset + (from - m_saveFrom), "Invalid UTF-8 continuation byte" );
         result = UNICODE_REPLACEMENT_CHARACTER;
       }
       else
@@ -138,12 +141,12 @@ const unsigned char * UTF8StreamDecoder::decodeBuffer (
         result = ((ch & 0x07) << 18) | ((ch1 & 0x3F) << 12) | ((ch2 & 0x3F) << 6) | (ch3 & 0x3F);
         if (unlikely(result <= 0xFFFF))
         {
-          m_errors.errorFormat( m_coords, NULL, "Non-canonical UTF-8 encoding");
+          m_errors.error( m_fromOffset + (from - m_saveFrom), "Non-canonical UTF-8 encoding");
           result = UNICODE_REPLACEMENT_CHARACTER;
         }
         if (unlikely(result > UNICODE_MAX_VALUE))
         {
-          m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 code point 0x%06x", result );
+          m_errors.error( m_fromOffset + (from - m_saveFrom), formatGCStr("Invalid UTF-8 code point 0x%06x", result) );
           result = UNICODE_REPLACEMENT_CHARACTER;
         }
       }
@@ -151,7 +154,7 @@ const unsigned char * UTF8StreamDecoder::decodeBuffer (
     }
     else
     {
-      m_errors.errorFormat( m_coords, NULL, "Invalid UTF-8 lead byte 0x%02x", ch );
+      m_errors.error( m_fromOffset + (from - m_saveFrom), formatGCStr("Invalid UTF-8 lead byte 0x%02x", ch) );
       result = UNICODE_REPLACEMENT_CHARACTER;
       from += 1;
     }

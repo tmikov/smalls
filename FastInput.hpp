@@ -16,8 +16,8 @@
 */
 
 
-#ifndef BUFFEREDINPUT_HPP
-#define	BUFFEREDINPUT_HPP
+#ifndef FASTINPUT_HPP
+#define	FASTINPUT_HPP
 
 #include "base.hpp"
 
@@ -31,11 +31,13 @@ template<typename ELEM, typename RES, RES _EOF>
 class FastInput
 {
 protected:
-  ELEM * m_head, * m_tail;
+  ELEM * m_buf,  * m_head, * m_tail;
+  off_t m_bufOffset;
   
   FastInput ()
   {
-    m_head = m_tail = 0;
+    m_buf = m_head = m_tail = 0;
+    m_bufOffset = 0;
   }
   
 public:
@@ -71,6 +73,14 @@ public:
   {
     assert( len <= m_tail - m_head );
     m_head += len;
+  }
+  
+  /**
+   * Return the offset of the next character (head)
+   */
+  off_t offset () const
+  {
+    return m_bufOffset + (m_head - m_buf);
   }
   
   virtual size_t fillBuffer () = 0;
@@ -113,12 +123,7 @@ class BufferedInput : public FastInput<ELEM,RES,_EOF>
 {
   typedef FastInput<ELEM,RES,_EOF> Super;
 protected:
-  ELEM * m_buf;
   size_t m_bufSize;
-  
-  BufferedInput ( ELEM * buf, size_t bufSize )
-    : m_buf( buf ), m_bufSize( bufSize )
-  {}
   
 public:
   virtual size_t fillBuffer ();
@@ -133,20 +138,21 @@ protected:
 template<typename ELEM, typename RES, RES _EOF>
 size_t BufferedInput<ELEM,RES,_EOF>::fillBuffer ()
 {
+  Super::m_bufOffset += Super::m_head - Super::m_buf;
   if (Super::m_head < Super::m_tail) // Do we have unread data?
   {
-    if (Super::m_head > m_buf) // Do we need to shift?
+    if (Super::m_head > Super::m_buf) // Do we need to shift?
     {
       size_t avail;
-      memmove( m_buf, Super::m_head, (avail = Super::m_tail - Super::m_head)*sizeof(ELEM) );
-      Super::m_head = m_buf;
+      memmove( Super::m_buf, Super::m_head, (avail = Super::m_tail - Super::m_head)*sizeof(ELEM) );
+      Super::m_head = Super::m_buf;
       Super::m_tail = Super::m_head + avail;
     }
   }
   else
-    Super::m_head = Super::m_tail = m_buf;
+    Super::m_head = Super::m_tail = Super::m_buf;
   
-  doRead( m_buf + m_bufSize - Super::m_tail );
+  doRead( Super::m_buf + m_bufSize - Super::m_tail );
  
   return Super::available();
 }
@@ -177,5 +183,5 @@ public:
 };
 
 
-#endif	/* BUFFEREDINPUT_HPP */
+#endif	/* FASTINPUT_HPP */
 

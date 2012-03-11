@@ -24,16 +24,16 @@ using namespace std;
 #define SAMPSIZE (1024*1024*16)
 #define ITERS    8
 
-class ErrorReporter : public IErrorReporter
+class ErrorReporter : public IStreamErrorReporter
 {
 public:
   int errorCount;
   
   ErrorReporter () { errorCount = 0; };
   
-  virtual void error ( const SourceCoords & coords, std::exception * cause, const char * message )
+  virtual void error ( off_t offset, const gc_char * message )
   {
-    std::cerr << "**error:" << ErrorInfo( coords, message, cause ).formatMessage() << std::endl;
+    std::cerr << "**error at offset " << offset << ":" << message << std::endl;
     ++this->errorCount;
   }
 };
@@ -82,7 +82,6 @@ int main ( int argc, char** argv )
   
   struct tms t1, t2;
   unsigned long sum = 0;
-  SourceCoords coords;
   ErrorReporter errors;
   long clk_tck = sysconf( _SC_CLK_TCK );
   
@@ -91,7 +90,7 @@ int main ( int argc, char** argv )
   for ( unsigned iter = 0; iter != ITERS; ++iter )
   {
     CharBufInput istr(samp,sampSize);
-    UTF8StreamDecoder dec(istr,errors,coords);
+    UTF8StreamDecoder dec(istr,errors);
     
     int32_t ch;
     while ((ch = dec.get()) >= 0)

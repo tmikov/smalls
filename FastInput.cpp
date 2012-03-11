@@ -15,12 +15,14 @@
    limitations under the License.
 */
 
-#include "BufferedInput.hpp"
+#include "FastInput.hpp"
 
 FileInput::FileInput ( FILE * f )
- : BufferedCharInput( m_thebuf, sizeof(m_thebuf) ),
-   m_f( f )
-{}
+ : m_f( f )
+{
+  m_buf = m_thebuf;
+  m_bufSize = sizeof(m_thebuf);
+}
 
 void FileInput::doRead ( size_t len )
 {
@@ -33,19 +35,19 @@ void FileInput::doRead ( size_t len )
 
 CharBufInput::CharBufInput ( const char * str, size_t len )
 {
-  m_head = (unsigned char *)str;
+  m_buf = m_head = (unsigned char *)str;
   m_tail = m_head + len;
 }
 
 CharBufInput::CharBufInput ( const char * str )
 {
-  m_head = (unsigned char *)str;
+  m_buf = m_head = (unsigned char *)str;
   m_tail = (unsigned char *)std::strchr( str, 0 );
 }
 
 CharBufInput::CharBufInput ( const std::string & str )
 {
-  m_head = (unsigned char *)str.c_str();
+  m_buf = m_head = (unsigned char *)str.c_str();
   m_tail = m_head + str.length();
 }
 

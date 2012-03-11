@@ -38,16 +38,16 @@ void TestUTF8::tearDown ( )
 {
 }
 
-class ErrorReporter : public IErrorReporter
+class ErrorReporter : public IStreamErrorReporter
 {
 public:
   int errorCount;
   
   ErrorReporter () { errorCount = 0; };
   
-  virtual void error ( const SourceCoords & coords, std::exception * cause, const char * message )
+  virtual void error ( off_t offset, const char * message )
   {
-    //std::cerr << "\n     error:" << ErrorInfo( coords, message, cause ).formatMessage() << std::endl;
+    std::cerr << "\n     error at offset " << offset << ":" << message << std::endl;
     ++this->errorCount;
   }
 };
@@ -55,9 +55,8 @@ public:
 void TestUTF8::testUTF8StreamDecoder ( )
 {
   ErrorReporter errors;
-  SourceCoords coords;
   CharBufInput t0("a");
-  UTF8StreamDecoder dec0( t0, errors, coords );
+  UTF8StreamDecoder dec0( t0, errors );
   CPPUNIT_ASSERT( 'a' == dec0.get() );
   CPPUNIT_ASSERT_EQUAL( -1, dec0.get() );
   
@@ -66,7 +65,7 @@ void TestUTF8::testUTF8StreamDecoder ( )
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E" 
     "\xEF\xBB\xBF\xF0\xA3\x8E\xB4"
   );
-  UTF8StreamDecoder dec1( t1, errors, coords );
+  UTF8StreamDecoder dec1( t1, errors );
   
   CPPUNIT_ASSERT( 'a' == dec1.get() );
   CPPUNIT_ASSERT( 'b' == dec1.get() );
@@ -83,10 +82,12 @@ void TestUTF8::testUTF8StreamDecoder ( )
   
   // Force an error
   CharBufInput t2( 
+    "a"
     "\xC0\x80"
   );
-  UTF8StreamDecoder dec2( t2, errors, coords );
+  UTF8StreamDecoder dec2( t2, errors );
   
+  CPPUNIT_ASSERT( 'a' == dec2.get() );
   CPPUNIT_ASSERT_EQUAL( UNICODE_REPLACEMENT_CHARACTER, dec2.get() );
   CPPUNIT_ASSERT_EQUAL( 1, errors.errorCount );
   CPPUNIT_ASSERT_EQUAL( -1, dec2.get() );

@@ -197,6 +197,16 @@ class Lexer : public gc
   IErrorReporter & m_errors;
   
   SourceCoords m_coords;
+  
+  class StreamErrorReporter : public IStreamErrorReporter
+  {
+    Lexer & m_outer;
+  public:
+    StreamErrorReporter ( Lexer & outer ) : m_outer( outer ) {};
+    void error ( off_t offset, const gc_char * message );
+  };
+  
+  StreamErrorReporter m_streamErrors;
   UTF8StreamDecoder m_decoder;
   
   int32_t m_curChar;
@@ -254,6 +264,7 @@ private:
   
   Token::Enum scanString ();
   int32_t scanInlineHexEscape ();
+  
 };
 
 #endif

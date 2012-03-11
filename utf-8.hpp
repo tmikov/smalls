@@ -22,7 +22,13 @@
 #include <iostream>
 
 #include "IErrorReporter.hpp"
-#include "BufferedInput.hpp"
+#include "FastInput.hpp"
+
+class IStreamErrorReporter
+{
+public:
+  virtual void error ( off_t offset, const gc_char * message ) = 0;
+};
 
 class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
 {
@@ -30,14 +36,16 @@ class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
   static const unsigned MAX_UTF8_LEN = 4;
   
   FastCharInput & m_in;
-  IErrorReporter & m_errors;
-  SourceCoords & m_coords;
+  IStreamErrorReporter & m_errors;
   
   static const unsigned BUFSIZE = 256;
   int32_t m_thebuf[BUFSIZE];
   
+  const unsigned char * m_saveFrom;
+  off_t m_fromOffset;
+  
 public:
-  UTF8StreamDecoder ( FastCharInput & in, IErrorReporter & errors, SourceCoords & coords );
+  UTF8StreamDecoder ( FastCharInput & in, IStreamErrorReporter & errors );
   
 private:
   /**
@@ -45,7 +53,7 @@ private:
    * valid bytes beyond 'to', so it is always safe to decode a valid UTF-8 character at the end
    * of the range.
    *
-   * <p>32-bit output characters are stored in '*this->m_head' which must be updated to point one beyond
+   * <p>32-bit output characters are stored in '*m_tail' which must be updated to point one beyond
    * the  last converted character. 'outLimit' holds the end of the result buffer. The function
    * terminates as soon as it is reached.
    *
