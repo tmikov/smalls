@@ -15,27 +15,27 @@
    limitations under the License.
 */
 
+
+#ifndef FASTSTDIOINPUT_HPP
+#define	FASTSTDIOINPUT_HPP
+
 #include "FastInput.hpp"
 
-CharBufInput::CharBufInput ( const char * str, size_t len )
-  : FastCharInput( (unsigned char *)str )
+class FastStdioInput : public BufferedCharInput
 {
-  m_tail = m_head + len;
-}
+  FILE * m_f;
+  bool m_own;
+public:
+  FastStdioInput ( const char * fileName, const char * mode, size_t bufSize = DEFAULT_BUFSIZE );
+  FastStdioInput ( FILE * f, size_t bufSize = DEFAULT_BUFSIZE );
+  virtual ~FastStdioInput ();
+protected:
+  /**
+   * Read up to len bytes into m_tail and advance m_tail. Throw io_error on error.
+   * @param len
+   */
+  virtual void doRead ( size_t len );
+};
 
-CharBufInput::CharBufInput ( const char * str )
-  : FastCharInput( (unsigned char *)str )
-{
-  m_tail = (unsigned char *)std::strchr( str, 0 );
-}
+#endif	/* FASTSTDIOINPUT_HPP */
 
-CharBufInput::CharBufInput ( const std::string & str )
-  : FastCharInput( (unsigned char *)str.c_str() )
-{
-  m_tail = m_head + str.length();
-}
-
-size_t CharBufInput::fillBuffer ()
-{
-  return available();
-}

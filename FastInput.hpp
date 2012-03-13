@@ -21,6 +21,8 @@
 
 #include "base.hpp"
 
+#include "boost/scoped_array.hpp"
+
 class io_error : public std::runtime_error
 {
 public:
@@ -34,9 +36,9 @@ protected:
   ELEM * m_buf,  * m_head, * m_tail;
   off_t m_bufOffset;
   
-  FastInput ()
+  FastInput ( ELEM * buf )
   {
-    m_buf = m_head = m_tail = 0;
+    m_buf = m_head = m_tail = buf;
     m_bufOffset = 0;
   }
   
@@ -118,14 +120,32 @@ __neverinline size_t FastInput<ELEM,RES,_EOF>::slowRead ( ELEM * dest, size_t co
 
 typedef FastInput<unsigned char,int,-1> FastCharInput;
 
+class CharBufInput : public FastCharInput
+{
+public:
+  CharBufInput ( const char * str, size_t len );
+  CharBufInput ( const char * str );
+  CharBufInput ( const std::string & str );  
+  virtual size_t fillBuffer ();
+};
+
 template<typename ELEM, typename RES, RES _EOF>
 class BufferedInput : public FastInput<ELEM,RES,_EOF>
 {
   typedef FastInput<ELEM,RES,_EOF> Super;
+  
+  boost::scoped_array<ELEM> m_bufCleaner;
+  
 protected:
+  static const unsigned DEFAULT_BUFSIZE = 4096;
   size_t m_bufSize;
   
+  BufferedInput ( size_t bufSize = DEFAULT_BUFSIZE )
+    : Super( new ELEM[bufSize] ), m_bufCleaner( Super::m_buf ), m_bufSize(bufSize)  
+  {};
+  
 public:
+
   virtual size_t fillBuffer ();
 protected:
   /**
@@ -158,30 +178,6 @@ size_t BufferedInput<ELEM,RES,_EOF>::fillBuffer ()
 }
 
 typedef BufferedInput<unsigned char,int,-1> BufferedCharInput;
-
-class FileInput : public BufferedCharInput
-{
-  FILE * m_f;
-  unsigned char m_thebuf[4096];
-public:
-  FileInput ( FILE * f );
-protected:
-  /**
-   * Read up to len bytes into m_tail and advance m_tail. Throw io_error on error.
-   * @param len
-   */
-  virtual void doRead ( size_t len );
-};
-
-class CharBufInput : public FastCharInput
-{
-public:
-  CharBufInput ( const char * str, size_t len );
-  CharBufInput ( const char * str );
-  CharBufInput ( const std::string & str );  
-  virtual size_t fillBuffer ();
-};
-
 
 #endif	/* FASTINPUT_HPP */
 

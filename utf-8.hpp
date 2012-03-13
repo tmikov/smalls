@@ -39,7 +39,6 @@ class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
   IStreamErrorReporter & m_errors;
   
   static const unsigned BUFSIZE = 256;
-  int32_t m_thebuf[BUFSIZE];
   
   const unsigned char * m_saveFrom;
   off_t m_fromOffset;

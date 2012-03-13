@@ -20,10 +20,9 @@
 
 
 UTF8StreamDecoder::UTF8StreamDecoder ( FastCharInput & in, IStreamErrorReporter & errors )
-  : m_in( in ), m_errors( errors )
+  : Super( BUFSIZE ),
+    m_in( in ), m_errors( errors )
 {
-  m_buf = m_thebuf;
-  m_bufSize = BUFSIZE;
 }
 
 void UTF8StreamDecoder::doRead ( size_t toRead )

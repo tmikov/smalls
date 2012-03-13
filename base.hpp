@@ -20,6 +20,7 @@
 #define	BASE_HPP
 
 #include <stdint.h>
+#include <limits>
 #include <cstring>
 #include <stdexcept>
 #include <iostream>
