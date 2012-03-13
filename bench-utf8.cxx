@@ -19,6 +19,7 @@
 #include "utf-8.hpp"
 #include "FastStdioInput.hpp"
 #include "FastFileInput.hpp"
+#include "FastMMapInput.hpp"
 #include <sys/times.h>
 
 using namespace std;
@@ -177,7 +178,13 @@ static void stdiotest ( const char * fileName, unsigned bufSize )
 
 static void filetest ( const char * fileName, unsigned bufSize )
 {
-  FastFileInput fi(fileName,0,bufSize);
+  FastFileInput fi(fileName,O_RDONLY,bufSize);
+  streamtest( fi );
+}
+
+static void mmaptest ( const char * fileName )
+{
+  FastMMapInput fi(fileName);
   streamtest( fi );
 }
 
@@ -230,6 +237,8 @@ int main ( int argc, char** argv )
       stdiotest( argv[2], cvtSize(argv[3]) );
     else if (std::strcmp( argv[1], "file") == 0)
       filetest( argv[2], cvtSize(argv[3]) );
+    else if (std::strcmp( argv[1], "mmap") == 0)
+      mmaptest( argv[2] );
     else 
       errorExit( "Unknown command");
   }
