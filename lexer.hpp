@@ -210,18 +210,6 @@ class Lexer : public gc
   UTF8StreamDecoder m_decoder;
   
   int32_t m_curChar;
-  /**
-   * Used internally from {@link #nextChar()} . Saved characters haven't been processed by
-   * {@link #nextChar()}.
-   */
-  int32_t m_savedChar;
-
-  /**
-   * Used from higher level to "undo" the last character returned by {@link #nextChar()} .
-   *
-   * @see #ungetChar(int)
-   */
-  int32_t m_ungetChar;
   
   bool m_inNestedComment;
   StringCollector m_strBuf;
@@ -252,7 +240,41 @@ private:
   
   int32_t validateCodePoint ( int32_t cp );
   
-  void ungetChar ( int32_t ch );
+  /**
+  * Unget the character in {@link #m_curChar} and replace it with another one. The next
+  * {@link #nextChar()} will return the value that used to be in {@link #m_curChar}. It function
+  * <b>MUST</b> not be used to unget a line feed!
+  *
+  * <p>Source coordinates of the "ungotten" character are determined by assuming that it is the
+  * previous character, before {@link #m_curChar}, on the current line. They are the current column - 1.
+  * (That is why line feed must not be ungotten).
+  *
+  * <p>In general this function is needed for convenience, to enable an extra character lookahead in
+  * some rare cases. We need just one char. In theory it could be avoided with the cost of
+  * significantly more code, expanding the DFA. The pattern of usage is:
+  * <pre>
+  *   if (m_curChar = '1')
+  *   {
+  *     nextChar();
+  *     if (m_curChar == '2'))
+  *     {
+  *       ungetChar( '1' );
+  *       scan(); // scan() will first see '1' (in m_curChar) and only afterwards will obtain '2'
+  *     }
+  *   }
+  * </pre>
+  *
+  *
+  * @param ch the char to unget.
+  */
+  void ungetChar ( int32_t ch )
+  {
+    m_decoder.unget( m_curChar );
+    m_curChar = ch;
+    // ch is the previous character on the same line, so we just go one column back.
+    --m_coords.column;
+  }
+
   int nextChar ();
   
   void saveCoords ()

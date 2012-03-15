@@ -91,7 +91,6 @@ Lexer::Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & sym
     m_coords( fileName, 1, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
   m_curChar = 0;
-  m_savedChar = m_ungetChar = -1;
   m_curToken = Token::NONE;
   m_inNestedComment = false;
   m_valueString = NULL;
@@ -125,43 +124,6 @@ int32_t Lexer::validateCodePoint ( int32_t ch )
 }
 
 /**
- * Unget the character in {@link #m_curChar} and replace it with another one. The next
- * {@link #nextChar()} will return the value that used to be in {@link #m_curChar}. It function
- * <b>MUST</b> not be used to unget a line feed!
- *
- * <p>Source coordinates of the "ungotten" character are determined by assuming that it is the
- * previous character, before {@link #m_curChar}, on the current line. They are the current column - 1.
- * (That is why line feed must not be ungotten).
- *
- * <p>In general this function is needed for convenience, to enable an extra character lookahead in
- * some rare cases. We need just one char. In theory it could be avoided with the cost of
- * significantly more code, expanding the DFA. The pattern of usage is:
- * <pre>
- *   if (m_curChar = '1')
- *   {
- *     nextChar();
- *     if (m_curChar == '2'))
- *     {
- *       ungetChar( '1' );
- *       scan(); // scan() will first see '1' (in m_curChar) and only afterwards will obtain '2'
- *     }
- *   }
- * </pre>
- *
- *
- * @param ch the char to unget.
- */
-void Lexer::ungetChar ( int32_t ch )
-{
-  assert( m_ungetChar < 0 );
-
-  m_ungetChar = m_curChar;
-  m_curChar = ch;
-  // ch is the previous character on the same line, so we just go one column back.
-  --m_coords.column;
-}
-
-/**
  * Read and return the next character. If we are at EOF or on any I/O error returns and keep
  * returning -1. {@link #m_coords} are updated with the coordinates of the
  * returned char.
@@ -172,32 +134,7 @@ void Lexer::ungetChar ( int32_t ch )
  */
 int Lexer::nextChar ()
 {
-  if (m_curChar < 0)
-    return -1;
-  
-  // if there was a character saved by the caller, return it
-  if (m_ungetChar >= 0)
-  {
-    m_curChar = m_ungetChar;
-    m_ungetChar = -1;
-
-    // we decremented the column in {@link #ungetChar(int)} to refer to the previous character
-    // now we restore it
-    ++m_coords.column;
-
-    return m_curChar;
-  }
-
-  int32_t ch;
-  
-  // if we have saved a character ourselves, process it
-  if (m_savedChar >= 0)
-  {
-    ch = m_savedChar;
-    m_savedChar = -1;
-  }
-  else
-    ch = m_decoder.get();
+  int32_t ch = m_decoder.get();
   
   // Translate CR, CR LF, CR U_NEXT_LINE, U_NEXT_LINE, U_LINE_SEP into LF and update the line number
   switch (ch)
@@ -206,11 +143,8 @@ int Lexer::nextChar ()
     {
       // Must peek into the next char. If it is LF or U_NEXT_LINE, collapse it
       int32_t next = m_decoder.get();
-      if (!(next == LF || next == U_NEXT_LINE))
-      {
-        // Nope. Just a single CR. We must unput the next character.
-        m_savedChar = next;
-      }
+      if (next != LF && next != U_NEXT_LINE)
+        m_decoder.unget( next ); // Nope. Just a single CR. We must unget the extra character
     }
     // FALL
   case U_NEXT_LINE:
@@ -220,6 +154,9 @@ int Lexer::nextChar ()
   case LF:
     ++m_coords.line;      // new lines reset the column and increment the line
     m_coords.column = 0;
+    break;
+
+  case -1: // EOF
     break;
 
   default:         // all other characters increment the column
