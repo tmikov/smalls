@@ -67,6 +67,14 @@ public:
       return slowRead( dest, count );
   }
   
+  __forceinline RES peek ()
+  {
+    if (likely(m_head != m_tail))
+      return *m_head;
+    else
+      return slowPeek();
+  }
+
   size_t available () const { return m_tail - m_head; }
   const ELEM * head () const { return m_head; }
   const ELEM * tail () const { return m_tail; }
@@ -89,6 +97,7 @@ public:
   
 private:
   RES    slowGet ();
+  RES    slowPeek ();
   size_t slowRead ( ELEM * dest, size_t count );
 };
 
@@ -98,6 +107,11 @@ __neverinline RES FastInput<ELEM,RES,_EOF>::slowGet ()
   return fillBuffer() != 0 ? *m_head++ : EOFVAL;
 }
 
+template<typename ELEM, typename RES, RES _EOF>
+__neverinline RES FastInput<ELEM,RES,_EOF>::slowPeek ()
+{
+  return fillBuffer() != 0 ? *m_head : EOFVAL;
+}
 
 template<typename ELEM, typename RES, RES _EOF>
 __neverinline size_t FastInput<ELEM,RES,_EOF>::slowRead ( ELEM * dest, size_t count )
