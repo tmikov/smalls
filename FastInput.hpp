@@ -66,7 +66,7 @@ public:
     else
       return slowRead( dest, count );
   }
-  
+
   __forceinline RES peek ()
   {
     if (likely(m_head != m_tail))
@@ -141,6 +141,17 @@ public:
   CharBufInput ( const char * str );
   CharBufInput ( const std::string & str );  
   virtual size_t fillBuffer ();
+
+  /**
+   * Puts back one character. Must only be used for actual characters that have been read and must
+   * always out back the character that was read.
+   * @param x The character to put back
+   */
+  void unget ( int x )
+  {
+    assert( m_head > m_buf && (int)*(m_head-1) == x );
+    --m_head;
+  }
 };
 
 template<typename ELEM, typename RES, RES _EOF>
@@ -156,9 +167,23 @@ protected:
   
   BufferedInput ( size_t bufSize = DEFAULT_BUFSIZE )
     : Super( new ELEM[bufSize] ), m_bufCleaner( Super::m_buf ), m_bufSize(bufSize)  
-  {};
+  {
+    assert( bufSize > UNGET_LIMIT );
+  };
   
 public:
+  static const unsigned UNGET_LIMIT = 8;
+
+  /**
+   * Puts back one character. No more than {@code UNGET_LIMIT} characters can
+   * be put back
+   * @param x The character to put back
+   */
+  void unget ( RES x )
+  {
+    assert( Super::m_head > Super::m_buf );
+    *--Super::m_head = (ELEM)x;
+  }
 
   virtual size_t fillBuffer ();
 protected:
@@ -172,19 +197,22 @@ protected:
 template<typename ELEM, typename RES, RES _EOF>
 size_t BufferedInput<ELEM,RES,_EOF>::fillBuffer ()
 {
-  Super::m_bufOffset += Super::m_head - Super::m_buf;
   if (Super::m_head < Super::m_tail) // Do we have unread data?
   {
-    if (Super::m_head > Super::m_buf) // Do we need to shift?
+    if (Super::m_head > Super::m_buf + UNGET_LIMIT) // Do we need to shift?
     {
+      Super::m_bufOffset += Super::m_head - Super::m_buf - UNGET_LIMIT;
       size_t avail;
-      memmove( Super::m_buf, Super::m_head, (avail = Super::m_tail - Super::m_head)*sizeof(ELEM) );
-      Super::m_head = Super::m_buf;
+      memmove( Super::m_buf + UNGET_LIMIT, Super::m_head, (avail = Super::m_tail - Super::m_head)*sizeof(ELEM) );
+      Super::m_head = Super::m_buf + UNGET_LIMIT;
       Super::m_tail = Super::m_head + avail;
     }
   }
   else
-    Super::m_head = Super::m_tail = Super::m_buf;
+  {
+    Super::m_bufOffset += Super::m_head - Super::m_buf - UNGET_LIMIT;
+    Super::m_head = Super::m_tail = Super::m_buf + UNGET_LIMIT;
+  }
   
   doRead( Super::m_buf + m_bufSize - Super::m_tail );
  
