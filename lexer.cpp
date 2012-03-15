@@ -99,7 +99,7 @@ Lexer::Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & sym
   nextChar();
 }
 
-void Lexer::StreamErrorReporter::error ( off_t offset, const gc_char * message )
+void Lexer::StreamErrorReporter::error ( off_t offset, off_t outOffset, const gc_char * message )
 {
   m_outer.error( "%s at offset %lu", message, (unsigned long)offset );
 }

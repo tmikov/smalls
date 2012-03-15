@@ -198,12 +198,12 @@ class Lexer : public gc
   
   SourceCoords m_coords;
   
-  class StreamErrorReporter : public IStreamErrorReporter
+  class StreamErrorReporter : public IStreamDecoderErrorReporter
   {
     Lexer & m_outer;
   public:
     StreamErrorReporter ( Lexer & outer ) : m_outer( outer ) {};
-    void error ( off_t offset, const gc_char * message );
+    void error ( off_t offset, off_t outOffset, const gc_char * message );
   };
   
   StreamErrorReporter m_streamErrors;

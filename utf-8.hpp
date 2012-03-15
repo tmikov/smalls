@@ -24,10 +24,10 @@
 #include "IErrorReporter.hpp"
 #include "FastInput.hpp"
 
-class IStreamErrorReporter
+class IStreamDecoderErrorReporter
 {
 public:
-  virtual void error ( off_t offset, const gc_char * message ) = 0;
+  virtual void error ( off_t inputOffset, off_t outputOffset, const gc_char * message ) = 0;
 };
 
 class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
@@ -36,15 +36,23 @@ class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
   static const unsigned MAX_UTF8_LEN = 4;
   
   FastCharInput & m_in;
-  IStreamErrorReporter & m_errors;
+  IStreamDecoderErrorReporter & m_errors;
   
   static const unsigned BUFSIZE = 256;
   
   const unsigned char * m_saveFrom;
   off_t m_fromOffset;
   
+  /**
+   * Returns the output stream offset of the next character to be written
+   */
+  off_t outOffset () const
+  {
+    return m_bufOffset + (m_tail - m_buf);
+  }
+  
 public:
-  UTF8StreamDecoder ( FastCharInput & in, IStreamErrorReporter & errors );
+  UTF8StreamDecoder ( FastCharInput & in, IStreamDecoderErrorReporter & errors );
   
 private:
   /**

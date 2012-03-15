@@ -24,16 +24,16 @@
 
 using namespace std;
 
-class ErrorReporter : public IStreamErrorReporter
+class ErrorReporter : public IStreamDecoderErrorReporter
 {
 public:
   int errorCount;
   
   ErrorReporter () { errorCount = 0; };
   
-  virtual void error ( off_t offset, const gc_char * message )
+  virtual void error ( off_t offset, off_t outOffset, const gc_char * message )
   {
-    std::cerr << "**error at offset " << offset << ":" << message << std::endl;
+    std::cerr << "**error at input offsset " << offset << " and output offset " << outOffset << ":" << message << std::endl;
     ++this->errorCount;
   }
 };

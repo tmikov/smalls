@@ -38,16 +38,16 @@ void TestUTF8::tearDown ( )
 {
 }
 
-class ErrorReporter : public IStreamErrorReporter
+class ErrorReporter : public IStreamDecoderErrorReporter
 {
 public:
   int errorCount;
   
   ErrorReporter () { errorCount = 0; };
   
-  virtual void error ( off_t offset, const char * message )
+  virtual void error ( off_t offset, off_t outOffset, const char * message )
   {
-    std::cerr << "\n     error at offset " << offset << ":" << message << std::endl;
+    std::cerr << "\n     error at offset " << offset <<" and output offset " << outOffset << ":" << message << std::endl;
     ++this->errorCount;
   }
 };
