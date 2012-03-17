@@ -169,7 +169,13 @@ int Lexer::nextChar ()
 
 static bool isWhitespace ( int32_t ch )
 {
-  return std::isspace( ch );
+  switch (ch)
+  {
+  case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
+    return true;
+  default:
+    return false;
+  };
 }
 
 static bool isDelimiter ( int32_t ch )
