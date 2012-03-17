@@ -179,7 +179,7 @@ public:
    * be put back
    * @param x The character to put back
    */
-  void unget ( RES x )
+  __forceinline void unget ( RES x )
   {
     assert( Super::m_head > Super::m_buf );
     *--Super::m_head = (ELEM)x;
