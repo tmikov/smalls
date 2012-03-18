@@ -87,7 +87,7 @@ const char * Token::s_reprs[] =
 
 
 Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, AbstractErrorReporter & errors )
-  : m_fileName( fileName ), m_symbolMap( symbolMap ), m_errors( errors ),
+  : m_fileName( fileName ), m_symbolMap( symbolMap ), m_errors( &errors ),
     m_tokCoords( fileName, 0, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
   m_curChar = 0;
@@ -102,29 +102,80 @@ Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolM
 
 void Lexer::StreamErrorReporter::error ( off_t offset, off_t outOffset, const gc_char * message )
 {
-  m_outer.error( "%s at offset %lu", message, (unsigned long)offset );
+  m_outer.error( 0, "%s at offset %lu", message, (unsigned long)offset );
 }
 
-void Lexer::error ( const gc_char * message, ... )
+void Lexer::error ( int ofs, const gc_char * message, ... )
 {
   std::va_list ap;
   va_start( ap, message );
   const gc_char * str = vformatGCStr( message, ap );
   va_end( ap );
 
-  SourceCoords coords( m_fileName, m_line, m_decoder.offset() - m_lineOffset + 1 );
-  m_errors.error( coords, str );
+  SourceCoords coords( m_fileName, m_line, m_decoder.offset() - m_lineOffset + ofs );
+  m_errors->error( coords, str );
 }
 
 int32_t Lexer::validateCodePoint ( int32_t ch )
 {
   if (!isValidCodePoint(ch))
   {
-    error( "Invalid Unicode character 0x%04x", ch );
+    error( 0, "Invalid Unicode character 0x%04x", ch );
     ch = ' '; // Simple error recovery
   }
   return ch;
 }
+
+std::string & Lexer::escapeStringChar ( std::string & buf, uint32_t ch )
+{
+  if (ch >= 32 && ch <= 127)
+  {
+    buf.push_back( (char)ch );
+    return buf;
+  }
+  switch (ch)
+  {
+  case '\a': return buf.append( "\\a" );
+  case '\b': return buf.append( "\\b" );
+  case '\t': return buf.append( "\\t" );
+  case '\n': return buf.append( "\\n" );
+  case '\v': return buf.append( "\\v" );
+  case '\f': return buf.append( "\\f" );
+  case '\r': return buf.append( "\\r" );
+  case '\"': return buf.append( "\\\"" );
+  case '\\': return buf.append( "\\\\" );
+  default:
+    if (isValidCodePoint(ch))
+    {
+      // TODO: we shouldn't escape printable Unicode characters
+      return buf.append( formatStr(ch<=0xFFFF?"\\u%04x":"\\U%08x", ch) );
+    }
+    else
+    {
+      do
+      {
+        buf.append( "\\x" );
+        buf.push_back( (ch >> 4) & 0xF );
+        buf.push_back( ch & 0xF );
+      }
+      while ((ch>>=8) != 0);
+      return buf;
+    }
+  }
+}
+
+/**
+ * Generate a properly escaped string representation of a code point sequence.
+ */
+std::string Lexer::escapeToString ( const int32_t * codePoints, unsigned count )
+{
+  std::string res;
+  res.reserve( count );
+  for ( ; count != 0; ++codePoints, --count )
+    escapeStringChar( res, *codePoints );
+  return res;
+}
+
 
 /**
  * Read and return the next character. If we are at EOF or on any I/O error returns and keep
@@ -237,14 +288,20 @@ Token::Enum Lexer::_nextToken ()
     case '`': nextChar(); return Token::ACCENT;
 
     // nested commend end handling.
-    case '|':
-      nextChar(); // consume the '|'
-      if (!m_inNestedComment || m_curChar != '#')
-        error( "\"|\" cannot start a lexeme" );
+    case '*':
+      if (lookAhead('/'))
+      {
+        if (m_inNestedComment)
+        {
+          nextChar(); // consume the '/'
+          return Token::NESTED_COMMENT_END;
+        }
+        else
+          error( -1, "Unexpected */" );
+      }
       else
       {
-        nextChar(); // consume the '#'
-        return Token::NESTED_COMMENT_END;
+        goto identifier;
       }
       break;
 
@@ -267,11 +324,36 @@ Token::Enum Lexer::_nextToken ()
 
     // <comment>
     case ';':
+    line_comment:
       // Skip until we reach line end or EOF
       do
         nextChar();
       while (m_curChar != -1 && m_curChar != LF);
       break;
+
+    // C++ comments
+    case '/':
+      {
+        int32_t peeked = peek();
+        if (peeked == '/')
+        {
+          acceptPeeked(peeked);
+          goto line_comment;
+        }
+        else if (peeked == '*')
+        {
+          acceptPeeked(peeked);
+          nextChar();
+          if (!m_inNestedComment)
+            scanNestedComment();
+          else
+            return Token::NESTED_COMMENT_START;
+        }
+        else
+          goto identifier;
+      }
+      break;
+
 
 //    // <digit>
 //    case '0': case '1': case '2': case '3': case '4':
@@ -360,16 +442,17 @@ Token::Enum Lexer::_nextToken ()
 //      }
 //      break;
 //
-//    // <identifier>
-//    case '!': case '$': case '%': case '&': case '*': case '/': case ':': case '<':
-//    case '=': case '>': case '?': case '^': case '_': case '~':
-//      {
-//        int saveCh = m_curChar;
-//        nextChar();
-//        if ( (res = scanRestIdentifier(saveCh)) != null)
+    // <identifier>
+    case '!': case '$': case '%': case '&':/*case '*': case '/':*/case ':': case '<':
+    case '=': case '>': case '?': case '^': case '_': case '~':
+    identifier:
+      {
+        int saveCh = m_curChar;
+        nextChar();
+//        if ( (res = scanRestIdentifier(saveCh)) != Token::NONE)
 //          return res;
-//      }
-//      break;
+      }
+      break;
 //
 //    // <peculiar identifier> "+"
 //    case '+':
@@ -440,14 +523,14 @@ Token::Enum Lexer::_nextToken ()
 //        error( null, "\"\\\" cannot start a lexeme" );
 //      break;
 //
-//    default:
-//      if (Character.isWhitespace(m_curChar))
-//      {
-//        // Consume all whitespace here for efficiency
-//        do
-//          nextChar();
-//        while (Character.isWhitespace(m_curChar));
-//      }
+    default:
+      if (isWhitespace(m_curChar))
+      {
+        // Consume all whitespace here for efficiency
+        do
+          nextChar();
+        while (isWhitespace(m_curChar));
+      }
 //      else if (Character.isLetter(m_curChar))
 //      {
 //        int saveCh = m_curChar;
@@ -455,14 +538,78 @@ Token::Enum Lexer::_nextToken ()
 //        if ( (res = scanRestIdentifier(saveCh)) != null)
 //          return res;
 //      }
-//      else
-//      {
-//        error( null, "\"%s\" cannot start a lexeme", escapeToString( new int[]{ m_curChar }, 0, 1 ) );
-//        nextChar();
-//      }
-//      break;
+      else
+      {
+        std::string tmp;
+        error( 0, "\"%s\" cannot start a lexeme", escapeStringChar( tmp, m_curChar ).c_str() );
+        nextChar();
+      }
+      break;
     }
   }
+}
+
+namespace {
+
+class NullReporter : public AbstractErrorReporter
+{
+  virtual void error ( const SourceCoords & coords, const gc_char * message )
+  {}
+};
+
+NullReporter s_nullReporter;
+
+}
+
+/**
+ * Scan a nested multi-line comment. The comment terminator is treated as a token within a stream of
+ * tokens. Thus we won't be looking within strings.
+ *
+ * <p>It works by resetting the error reporter to one that ignores all errors and calling the
+ * scanner recursively. It however does not rely on recursion to handle the nested comments themselves
+ */
+void Lexer::scanNestedComment ()
+{
+  SourceCoords nestedCommentStart( m_tokCoords );
+
+  assert( !m_inNestedComment );
+
+  AbstractErrorReporter * saveReporter = m_errors;
+  m_errors = &s_nullReporter;
+  m_inNestedComment = true;
+  try
+  {
+    int level = 1;
+    for(;;)
+    {
+      switch (nextToken())
+      {
+      case Token::NESTED_COMMENT_START:
+        ++level;
+        break;
+      case Token::NESTED_COMMENT_END:
+        if (--level == 0)
+          goto exitLoop;
+        break;
+      case Token::EOFTOK:
+        goto exitLoop; // we must report the error after we have restored the error reporter
+      default:
+        break;
+      }
+    }
+exitLoop:;
+  }
+  catch(...)
+  {
+    m_errors = saveReporter;
+    m_inNestedComment = false;
+    throw;
+  }
+  m_errors = saveReporter;
+  m_inNestedComment = false;
+
+  if (m_curToken == Token::EOFTOK)
+    error( 0, "EOF in comment started on line "+ nestedCommentStart.line );
 }
 
 Token::Enum Lexer::scanString ()
@@ -478,7 +625,13 @@ Token::Enum Lexer::scanString ()
     }
     else if (m_curChar < 0)
     {
-      error( "Unterminated string lexeme at end of input" );
+      error( 0, "Unterminated string constant at end of input. String started on line %u column %u",
+              m_tokCoords.line, m_tokCoords.column );
+      break;
+    }
+    else if (m_curChar == '\n')
+    {
+      m_errors->error( m_tokCoords, "Unterminated string constant" );
       break;
     }
     else if (m_curChar == '\\')
@@ -486,7 +639,10 @@ Token::Enum Lexer::scanString ()
       nextChar();
       switch (m_curChar)
       {
-      case -1: error( "Unterminated string escape at end of input" ); goto exitLoop;
+      case -1:
+        error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
+               m_tokCoords.line, m_tokCoords.column );
+        goto exitLoop;
 
       case 'a': m_strBuf.append( '\a' ); nextChar(); break;
       case 'b': m_strBuf.append( '\b' ); nextChar(); break;
@@ -498,13 +654,20 @@ Token::Enum Lexer::scanString ()
       case '"': m_strBuf.append( '"' ); nextChar(); break;
       case '\\': m_strBuf.append( '\\' ); nextChar(); break;
 
+      case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+        m_strBuf.append( scanOctalEscape() );
+        break;
       case 'x':
         nextChar();
         m_strBuf.append( scanHexEscape() );
         break;
-      case 'u': case 'U':
+      case 'u':
         nextChar();
-        m_strBuf.appendCodePoint( scanUnicodeEscape() );
+        m_strBuf.appendCodePoint( scanUnicodeEscape(4) );
+        break;
+      case 'U':
+        nextChar();
+        m_strBuf.appendCodePoint( scanUnicodeEscape(8) );
         break;
 
       default:
@@ -516,7 +679,9 @@ Token::Enum Lexer::scanString ()
           nextChar();
         else if (m_curChar == -1)
         {
-          error( "Unterminated string escape at end of input" ); goto exitLoop;
+          error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
+                  m_tokCoords.line, m_tokCoords.column );
+          goto exitLoop;
         }
         else // Invalid escape!
         {
@@ -524,7 +689,7 @@ Token::Enum Lexer::scanString ()
           // to utf-8 strings
           char tmp[8];
           tmp[encodeUTF8( tmp, m_curChar )] = 0;
-          error( "Invalid string escape \\%s", tmp );
+          error( 0, "Invalid string escape \\%s", tmp );
           nextChar();
         }
         break;
@@ -538,33 +703,30 @@ Token::Enum Lexer::scanString ()
   }
 exitLoop:
 
+  m_strBuf.append( 0 );
   m_valueString = m_strBuf.createGCString();
   return Token::STR;
 }
 
 /**
- * Called after the \u has been scanned, to scan the rest of the Unicode escape character in hex.
+ * Called after the \u or \U has been scanned, to scan the rest of the Unicode escape character in hex.
  * It must be a valid Unicode character. Returns its validated value.
- *
- * <p>The Unicode character includes up to 8 hex characters after the escape.
  *
  * @return the validated value of the inline hex character.
  */
-int32_t Lexer::scanUnicodeEscape ()
+int32_t Lexer::scanUnicodeEscape ( unsigned len )
 {
   uint32_t resultCodePoint = 0;
   bool err = false;
 
-  if (!isBaseDigit(16, m_curChar))
-  {
-    error( "Invalid Unicode escape" );
-    return ' ';
-  }
-
   // Sequence of hex digits
-  unsigned i = 0;
-  do
+  for ( unsigned i = 0; i != len; ++i )
   {
+    if (!isBaseDigit(16, m_curChar))
+    {
+      error( 0, "Invalid Unicode escape" );
+      return ' ';
+    }
     if (!err)
     {
       uint32_t newResult = (resultCodePoint << 4) + baseDigitToInt(m_curChar);
@@ -572,15 +734,14 @@ int32_t Lexer::scanUnicodeEscape ()
         resultCodePoint = newResult;
       else
       {
-        error( "Invalid Unicode escape" );
+        error( 0, "Invalid Unicode escape" );
         err = true;
         resultCodePoint = ' ';
       }
     }
-    ++i;
+
     nextChar();
   }
-  while(i != 8 && isBaseDigit(16, m_curChar));
 
   return validateCodePoint( resultCodePoint );
 }
@@ -593,17 +754,30 @@ uint8_t Lexer::scanHexEscape()
   uint8_t res;
   if (!isBaseDigit(16, m_curChar))
   {
-    error( "Invalid hex escape" );
+    error( 0, "Invalid hex escape" );
     return ' ';
   }
   res = baseDigitToInt(m_curChar) << 4;
   nextChar();
   if (!isBaseDigit(16, m_curChar))
   {
-    error( "Invalid hex escape" );
+    error( 0, "Invalid hex escape" );
     return ' ';
   }
   res |= baseDigitToInt(m_curChar);
   nextChar();
+  return res;
+}
+
+uint8_t Lexer::scanOctalEscape ()
+{
+  uint8_t res = 0;
+  unsigned i = 0;
+  do
+  {
+    res = (res << 3) + baseDigitToInt(m_curChar);
+    nextChar();
+  }
+  while (++i != 3 && m_curChar >= '0' && m_curChar <= '7');
   return res;
 }

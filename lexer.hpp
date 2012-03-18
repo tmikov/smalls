@@ -194,7 +194,7 @@ class Lexer : public gc
 {
   const gc_char * m_fileName;
   SymbolMap & m_symbolMap;
-  AbstractErrorReporter & m_errors;
+  AbstractErrorReporter * m_errors;
 
   /**
    * The stream offset of the beginning of the line. We use that to calculate the columns
@@ -248,8 +248,16 @@ public:
     return m_curToken;
   }
 
+  const gc_char * getValueString () const
+  {
+    return m_valueString;
+  }
+
 private:
-  void error ( const gc_char * message, ... );
+  void error ( int ofs, const gc_char * message, ... );
+
+  std::string & escapeStringChar ( std::string & buf, uint32_t ch );
+  std::string escapeToString ( const int32_t * codePoints, unsigned count );
 
   int32_t validateCodePoint ( int32_t cp );
 
@@ -286,19 +294,43 @@ private:
     m_curChar = ch;
   }
 
+  int32_t peek ()
+  {
+    return m_decoder.peek();
+  }
+
+  void acceptPeeked ( int32_t ch )
+  {
+    m_decoder.advance( 1 );
+    m_curChar = ch;
+  }
+
+  __forceinline bool lookAhead ( int32_t ch )
+  {
+    if (peek() == ch)
+    {
+      acceptPeeked( ch );
+      return true;
+    }
+    else
+      return false;
+  }
+
   void nextChar ();
 
   void saveCoords ()
   {
     m_tokCoords.line = m_line;
-    m_tokCoords.column = m_decoder.offset() - m_lineOffset + 1;
+    m_tokCoords.column = m_decoder.offset() - m_lineOffset;
   }
 
   Token::Enum _nextToken ();
 
+  void scanNestedComment ();
   Token::Enum scanString ();
-  int32_t scanUnicodeEscape ();
+  int32_t scanUnicodeEscape ( unsigned maxLen );
   uint8_t scanHexEscape ();
+  uint8_t scanOctalEscape ();
 
   static bool isNewLine ( int32_t ch );
   static bool isWhitespace ( int32_t ch );
