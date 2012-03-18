@@ -331,6 +331,7 @@ private:
   int32_t scanUnicodeEscape ( unsigned maxLen );
   uint8_t scanHexEscape ();
   uint8_t scanOctalEscape ();
+  Token::Enum scanRemainingIdentifier ();
 
   static bool isNewLine ( int32_t ch );
   static bool isWhitespace ( int32_t ch );

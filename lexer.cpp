@@ -289,19 +289,20 @@ Token::Enum Lexer::_nextToken ()
 
     // nested commend end handling.
     case '*':
-      if (lookAhead('/'))
+      nextChar();
+      if (m_curChar == '/')
       {
+        nextChar();
         if (m_inNestedComment)
-        {
-          nextChar(); // consume the '/'
           return Token::NESTED_COMMENT_END;
-        }
         else
-          error( -1, "Unexpected */" );
+          m_errors->error( m_tokCoords, "Unexpected */" );
       }
       else
       {
-        goto identifier;
+        m_strBuf.reset();
+        m_strBuf.append( '*' );
+        return scanRemainingIdentifier();
       }
       break;
 
@@ -334,15 +335,11 @@ Token::Enum Lexer::_nextToken ()
     // C++ comments
     case '/':
       {
-        int32_t peeked = peek();
-        if (peeked == '/')
-        {
-          acceptPeeked(peeked);
+        nextChar();
+        if (m_curChar == '/')
           goto line_comment;
-        }
-        else if (peeked == '*')
+        else if (m_curChar == '*')
         {
-          acceptPeeked(peeked);
           nextChar();
           if (!m_inNestedComment)
             scanNestedComment();
@@ -350,7 +347,11 @@ Token::Enum Lexer::_nextToken ()
             return Token::NESTED_COMMENT_START;
         }
         else
-          goto identifier;
+        {
+          m_strBuf.reset();
+          m_strBuf.append( '/' );
+          return scanRemainingIdentifier();
+        }
       }
       break;
 
@@ -445,7 +446,6 @@ Token::Enum Lexer::_nextToken ()
     // <identifier>
     case '!': case '$': case '%': case '&':/*case '*': case '/':*/case ':': case '<':
     case '=': case '>': case '?': case '^': case '_': case '~':
-    identifier:
       {
         int saveCh = m_curChar;
         nextChar();
@@ -780,4 +780,9 @@ uint8_t Lexer::scanOctalEscape ()
   }
   while (++i != 3 && m_curChar >= '0' && m_curChar <= '7');
   return res;
+}
+
+Token::Enum Lexer::scanRemainingIdentifier ()
+{
+  return Token::EOFTOK;
 }
