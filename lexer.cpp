@@ -134,7 +134,7 @@ int32_t Lexer::validateCodePoint ( int32_t ch )
  *
  * @return the next character, or -1 on EOF or any I/O error
  */
-int Lexer::nextChar ()
+void Lexer::nextChar ()
 {
   int32_t ch = m_decoder.get();
 
@@ -156,7 +156,7 @@ int Lexer::nextChar ()
     break;
   }
 
-  return m_curChar = ch;
+  m_curChar = ch;
 }
 
 #define NEWLINE_CASE    case LF

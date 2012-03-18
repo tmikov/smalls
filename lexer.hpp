@@ -243,6 +243,11 @@ public:
     return m_curToken = _nextToken();
   }
 
+  Token::Enum curToken () const
+  {
+    return m_curToken;
+  }
+
 private:
   void error ( const gc_char * message, ... );
 
@@ -281,7 +286,7 @@ private:
     m_curChar = ch;
   }
 
-  int nextChar ();
+  void nextChar ();
 
   void saveCoords ()
   {
