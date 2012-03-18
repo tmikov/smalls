@@ -16,23 +16,23 @@
 */
 
 
-#ifndef IERRORREPORTER_HPP
-#define	IERRORREPORTER_HPP
+#ifndef ABSTRACTERRORREPORTER_HPP
+#define	ABSTRACTERRORREPORTER_HPP
 
 #include "base.hpp"
 
 class SourceCoords
 {
-public:  
+public:
   const gc_char * fileName;
   unsigned line, column;
-  
+
   SourceCoords () : fileName( NULL ), line(0), column(0) {};
 
   SourceCoords ( const gc_char * fileName_, unsigned line_, unsigned column_ )
     : fileName( fileName_ ), line( line_ ), column( column_ )
   {};
-  
+
   bool operator == ( const SourceCoords & x ) const
   {
     return fileName == fileName && line == x.line && column == x.column;
@@ -41,25 +41,24 @@ public:
 
 class ErrorInfo : public gc
 {
-public:  
+public:
   const SourceCoords coords;
   const gc_char * const message;
-  const std::exception * const cause;
-  
-  ErrorInfo ( const SourceCoords & coords_, const gc_char * message_, std::exception * cause_ )
-    : coords( coords_ ), message( message_ ), cause( cause_ )
+
+  ErrorInfo ( const SourceCoords & coords_, const gc_char * message_ )
+    : coords( coords_ ), message( message_ )
   {}
-  
+
   std::string formatMessage () const;
 };
 
-class IErrorReporter
+class AbstractErrorReporter
 {
 public:
-  virtual void error ( const SourceCoords & coords, std::exception * cause, const gc_char * message ) = 0;
-  
-  void errorFormat ( const SourceCoords & coords, std::exception * cause, const gc_char * message, ... );
+  virtual void error ( const SourceCoords & coords, const gc_char * message ) = 0;
+
+  void errorFormat ( const SourceCoords & coords, const gc_char * message, ... );
 };
 
-#endif	/* IERRORREPORTER_HPP */
+#endif	/* ABSTRACTERRORREPORTER_HPP */
 

@@ -15,14 +15,14 @@
    limitations under the License.
 */
 
-#include "IErrorReporter.hpp"
+#include "AbstractErrorReporter.hpp"
 #include <sstream>
 
 std::string ErrorInfo::formatMessage() const
 {
   std::stringstream os;
   bool addr = false;
-  
+
   if (coords.fileName)
   {
     os << coords.fileName;
@@ -38,19 +38,19 @@ std::string ErrorInfo::formatMessage() const
     os << '.' << coords.column;
     addr = true;
   }
-  
+
   if (addr)
     os << ':';
-  
+
   os << message;
-  
+
   return os.str();
 }
 
-void IErrorReporter::errorFormat ( const SourceCoords & coords, std::exception * cause, const gc_char * message, ... )
+void AbstractErrorReporter::errorFormat ( const SourceCoords & coords, const gc_char * message, ... )
 {
   std::va_list ap;
   va_start( ap, message );
-  error( coords, cause, vformatGCStr( message, ap ) );
+  error( coords, vformatGCStr( message, ap ) );
   va_end( ap );
 }

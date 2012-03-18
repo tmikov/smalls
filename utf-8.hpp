@@ -21,7 +21,7 @@
 
 #include <iostream>
 
-#include "IErrorReporter.hpp"
+#include "AbstractErrorReporter.hpp"
 #include "FastInput.hpp"
 
 class IStreamDecoderErrorReporter
@@ -34,15 +34,15 @@ class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
 {
   typedef BufferedInput<int32_t,int32_t,-1> Super;
   static const unsigned MAX_UTF8_LEN = 4;
-  
+
   FastCharInput & m_in;
   IStreamDecoderErrorReporter & m_errors;
-  
+
   static const unsigned BUFSIZE = 256;
-  
+
   const unsigned char * m_saveFrom;
   off_t m_fromOffset;
-  
+
   /**
    * Returns the output stream offset of the next character to be written
    */
@@ -50,10 +50,10 @@ class UTF8StreamDecoder : public BufferedInput<int32_t,int32_t,-1>
   {
     return m_bufOffset + (m_tail - m_buf);
   }
-  
+
 public:
   UTF8StreamDecoder ( FastCharInput & in, IStreamDecoderErrorReporter & errors );
-  
+
 private:
   /**
    * Decode UTF-8 bytes between 'from' and 'to' (exclusive). There are at least (MAX_UTF8_LEN-1)
@@ -67,19 +67,19 @@ private:
    * @return the next value of 'from'
    */
   const unsigned char * decodeBuffer ( const unsigned char * from, const unsigned char * to, int32_t * outLimit );
-protected:  
+protected:
   virtual void doRead ( size_t len );
 };
 
 /**
- * 
+ *
  * @param dst  buffer big enough to hold at least 6 bytes
  * @param codePoint
  * @return the number of characters stored
  */
 size_t encodeUTF8 ( char * dst, uint32_t codePoint );
 
-#define UNICODE_MAX_VALUE    0x10FFFF 
+#define UNICODE_MAX_VALUE    0x10FFFF
 #define UNICODE_SURROGATE_LO   0xD800
 #define UNICODE_SURROGATE_HI   0xDFFF
 

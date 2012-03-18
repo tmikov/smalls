@@ -22,7 +22,7 @@
 
 #include <boost/unordered_map.hpp>
 
-#include "IErrorReporter.hpp"
+#include "AbstractErrorReporter.hpp"
 #include "utf-8.hpp"
 #include "StringCollector.hpp"
 
@@ -194,7 +194,7 @@ class Lexer : public gc
 {
   const gc_char * m_fileName;
   SymbolMap & m_symbolMap;
-  IErrorReporter & m_errors;
+  AbstractErrorReporter & m_errors;
 
   /**
    * The stream offset of the beginning of the line. We use that to calculate the columns
@@ -236,7 +236,7 @@ class Lexer : public gc
   static const int32_t U_PARA_SEP = 0x2029;
 
 public:
-  Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors );
+  Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, AbstractErrorReporter & errors );
 
   Token::Enum nextToken ()
   {

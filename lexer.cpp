@@ -86,7 +86,7 @@ const char * Token::s_reprs[] =
 #undef _MK_ENUM
 
 
-Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors )
+Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, AbstractErrorReporter & errors )
   : m_fileName( fileName ), m_symbolMap( symbolMap ), m_errors( errors ),
     m_tokCoords( fileName, 0, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
@@ -113,7 +113,7 @@ void Lexer::error ( const gc_char * message, ... )
   va_end( ap );
 
   SourceCoords coords( m_fileName, m_line, m_decoder.offset() - m_lineOffset + 1 );
-  m_errors.error( coords, NULL, str );
+  m_errors.error( coords, str );
 }
 
 int32_t Lexer::validateCodePoint ( int32_t ch )
