@@ -196,7 +196,16 @@ class Lexer : public gc
   SymbolMap & m_symbolMap;
   IErrorReporter & m_errors;
   
-  SourceCoords m_coords;
+  /**
+   * The stream offset of the beginning of the line. We use that to calculate the columns
+   * position of all characters in a line instead of incrementing a column.
+   */
+  off_t m_lineOffset;
+  unsigned m_line;
+  /**
+   * The coordinates of the token we just returned.
+   */
+  SourceCoords m_tokCoords;
   
   class StreamErrorReporter : public IStreamDecoderErrorReporter
   {
@@ -215,7 +224,6 @@ class Lexer : public gc
   StringCollector m_strBuf;
   
   Token::Enum m_curToken;
-  SourceCoords m_tokCoords;
   const gc_char * m_valueString; 
   
   static const int32_t HT = 9;
@@ -271,15 +279,14 @@ private:
   {
     m_decoder.unget( m_curChar );
     m_curChar = ch;
-    // ch is the previous character on the same line, so we just go one column back.
-    --m_coords.column;
   }
 
   int nextChar ();
   
   void saveCoords ()
   {
-    m_tokCoords = m_coords;
+    m_tokCoords.line = m_line;
+    m_tokCoords.column = m_decoder.offset() - m_lineOffset + 1;
   }
   
   Token::Enum _nextToken ();

@@ -88,13 +88,15 @@ const char * Token::s_reprs[] =
 
 Lexer::Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors )
   : m_fileName( fileName ), m_symbolMap( symbolMap ), m_errors( errors ),
-    m_coords( fileName, 1, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
+    m_tokCoords( fileName, 0, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
   m_curChar = 0;
   m_curToken = Token::NONE;
   m_inNestedComment = false;
   m_valueString = NULL;
-  
+
+  m_lineOffset = 0;
+  m_line = 1;
   nextChar();
 }
 
@@ -109,8 +111,9 @@ void Lexer::error ( const gc_char * message, ... )
   va_start( ap, message );
   const gc_char * str = vformatGCStr( message, ap );
   va_end( ap );
-  
-  m_errors.error( m_coords, NULL, str );
+
+  SourceCoords coords( m_fileName, m_line, m_decoder.offset() - m_lineOffset + 1 );
+  m_errors.error( coords, NULL, str );
 }
 
 int32_t Lexer::validateCodePoint ( int32_t ch )
@@ -125,8 +128,7 @@ int32_t Lexer::validateCodePoint ( int32_t ch )
 
 /**
  * Read and return the next character. If we are at EOF or on any I/O error returns and keep
- * returning -1. {@link #m_coords} are updated with the coordinates of the
- * returned char.
+ * returning -1. {@link #m_line} is updated if we encounter a new line.
  *
  * <p>All line end characters and combination are translated to '\n' ({@link #LF}).
  *
@@ -152,15 +154,8 @@ int Lexer::nextChar ()
     ch = LF;
     // FALL
   case LF:
-    ++m_coords.line;      // new lines reset the column and increment the line
-    m_coords.column = 0;
-    break;
-
-  case -1: // EOF
-    break;
-
-  default:         // all other characters increment the column
-    ++m_coords.column;
+    ++m_line;
+    m_lineOffset = m_decoder.offset();
     break;
   }
 
