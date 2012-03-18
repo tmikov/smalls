@@ -72,14 +72,14 @@ SymbolMap::SymbolMap() :
 }
 
 #define _MK_ENUM(name,repr)  #name,
-const char * Token::s_names[] = 
+const char * Token::s_names[] =
 {
   _DEF_TOKENS
 };
 #undef _MK_ENUM
 
 #define _MK_ENUM(name,repr)  repr,
-const char * Token::s_reprs[] = 
+const char * Token::s_reprs[] =
 {
   _DEF_TOKENS
 };
@@ -137,7 +137,7 @@ int32_t Lexer::validateCodePoint ( int32_t ch )
 int Lexer::nextChar ()
 {
   int32_t ch = m_decoder.get();
-  
+
   // Translate CR, CR LF, U_NEXT_LINE, U_LINE_SEP, U_PARA_SEP into LF and update the line number
   switch (ch)
   {
@@ -228,14 +228,14 @@ Token::Enum Lexer::_nextToken ()
     {
     case -1:
       return Token::EOFTOK;
-      
+
     case '(': nextChar(); return Token::LPAR;
     case ')': nextChar(); return Token::RPAR;
     case '[': nextChar(); return Token::LSQUARE;
     case ']': nextChar(); return Token::RSQUARE;
     case '\'': nextChar(); return Token::APOSTR;
     case '`': nextChar(); return Token::ACCENT;
-    
+
     // nested commend end handling.
     case '|':
       nextChar(); // consume the '|'
@@ -488,11 +488,11 @@ Token::Enum Lexer::scanString ()
       {
       case -1: error( "Unterminated string escape at end of input" ); goto exitLoop;
 
-      case 'a': m_strBuf.append( (char)7 ); nextChar(); break;
+      case 'a': m_strBuf.append( '\a' ); nextChar(); break;
       case 'b': m_strBuf.append( '\b' ); nextChar(); break;
       case 't': m_strBuf.append( '\t' ); nextChar(); break;
       case 'n': m_strBuf.append( '\n' ); nextChar(); break;
-      case 'v': m_strBuf.append( (char)11 ); nextChar(); break;
+      case 'v': m_strBuf.append( '\v' ); nextChar(); break;
       case 'f': m_strBuf.append( '\f' ); nextChar(); break;
       case 'r': m_strBuf.append( '\r' ); nextChar(); break;
       case '"': m_strBuf.append( '"' ); nextChar(); break;
@@ -500,21 +500,33 @@ Token::Enum Lexer::scanString ()
 
       case 'x':
         nextChar();
-        m_strBuf.appendCodePoint( scanInlineHexEscape() );
+        m_strBuf.append( scanHexEscape() );
+        break;
+      case 'u': case 'U':
+        nextChar();
+        m_strBuf.appendCodePoint( scanUnicodeEscape() );
         break;
 
       default:
-        // '\\' <intraline whitespace> '\n' <intraline whitespace> must be ignored
+        // '\\' <intraline whitespace> '\n'
         while (m_curChar != '\n' && isWhitespace(m_curChar))
           nextChar();
-        if (m_curChar != '\n')
+
+        if (m_curChar == '\n')
+          nextChar();
+        else if (m_curChar == -1)
         {
-          error( "Unterminated string escape at end of input" );
-          goto exitLoop;
+          error( "Unterminated string escape at end of input" ); goto exitLoop;
         }
-        nextChar();
-        while (m_curChar != '\n' && isWhitespace(m_curChar))
+        else // Invalid escape!
+        {
+          // Slightly tricky. We can't display Unicode characters directly. We need to convert them
+          // to utf-8 strings
+          char tmp[8];
+          tmp[encodeUTF8( tmp, m_curChar )] = 0;
+          error( "Invalid string escape \\%s", tmp );
           nextChar();
+        }
         break;
       }
     }
@@ -524,55 +536,74 @@ Token::Enum Lexer::scanString ()
       nextChar();
     }
   }
-exitLoop:  
+exitLoop:
 
   m_valueString = m_strBuf.createGCString();
   return Token::STR;
 }
 
 /**
- * Called after the \x has been scanned, to scan the rest of the inline hex character.
- * Returns its validated value. Note that the character could be a supplementary code
- * point (> 0xFFFF).
+ * Called after the \u has been scanned, to scan the rest of the Unicode escape character in hex.
+ * It must be a valid Unicode character. Returns its validated value.
+ *
+ * <p>The Unicode character includes up to 8 hex characters after the escape.
  *
  * @return the validated value of the inline hex character.
  */
-int32_t Lexer::scanInlineHexEscape ()
+int32_t Lexer::scanUnicodeEscape ()
 {
-  int32_t resultCodePoint = 0;
+  uint32_t resultCodePoint = 0;
   bool err = false;
 
   if (!isBaseDigit(16, m_curChar))
   {
-    error( "Invalid inline hex escape" );
+    error( "Invalid Unicode escape" );
     return ' ';
   }
 
-  // Sequence of hex digits up to ';'
+  // Sequence of hex digits
+  unsigned i = 0;
   do
   {
     if (!err)
     {
-      int newResult = (resultCodePoint << 4) + baseDigitToInt(m_curChar);
+      uint32_t newResult = (resultCodePoint << 4) + baseDigitToInt(m_curChar);
       if (newResult >= resultCodePoint)
         resultCodePoint = newResult;
       else
       {
-        error( "Inline hex character overflow" );
+        error( "Invalid Unicode escape" );
         err = true;
         resultCodePoint = ' ';
       }
     }
-  }
-  while(isBaseDigit(16, nextChar()));
-
-  if (m_curChar == ';')
+    ++i;
     nextChar();
-  else
-  {
-    error( "Inline hex character must be terminated with #\\;" );
-    resultCodePoint = ' ';
   }
+  while(i != 8 && isBaseDigit(16, m_curChar));
 
   return validateCodePoint( resultCodePoint );
+}
+
+/**
+ * Scan exactly two hex characters (after \x) and return a byte.
+ */
+uint8_t Lexer::scanHexEscape()
+{
+  uint8_t res;
+  if (!isBaseDigit(16, m_curChar))
+  {
+    error( "Invalid hex escape" );
+    return ' ';
+  }
+  res = baseDigitToInt(m_curChar) << 4;
+  nextChar();
+  if (!isBaseDigit(16, m_curChar))
+  {
+    error( "Invalid hex escape" );
+    return ' ';
+  }
+  res |= baseDigitToInt(m_curChar);
+  nextChar();
+  return res;
 }

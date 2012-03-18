@@ -73,8 +73,8 @@ class Symbol : public gc
 public:
   const gc_char * const name;
   SymCode::Enum const code;
-  
-  Symbol ( const gc_char * name_, SymCode::Enum code_ ) 
+
+  Symbol ( const gc_char * name_, SymCode::Enum code_ )
     : name( name_ ), code( code_ )
   {}
 };
@@ -106,10 +106,10 @@ struct gc_charstr_hash : std::unary_function<const gc_char *, std::size_t>
 // const member initialization in the constructor
 class SymbolMapBase : public gc
 {
-protected:  
+protected:
   typedef boost::unordered_map<const gc_char *,
                                Symbol *,
-                               gc_charstr_hash, 
+                               gc_charstr_hash,
                                gc_charstr_equal,
                                gc_allocator<const gc_char *> > Map;
   Map m_map;
@@ -120,9 +120,9 @@ class SymbolMap : public SymbolMapBase
   Symbol * special ( const gc_char * name, SymCode::Enum code );
 public:
   SymbolMap ();
-  
+
   Symbol * newSymbol ( const gc_char * name );
-  
+
   Symbol * const sym_quote;
   Symbol * const sym_quasiquore;
   Symbol * const sym_unquote;
@@ -184,7 +184,7 @@ struct Token
 
   static const char * name ( Enum x ) { return s_names[x]; }
   static const char * repr ( Enum x ) { return s_reprs[x]; }
-  
+
 private:
   static const char * s_names[];
   static const char * s_reprs[];
@@ -195,7 +195,7 @@ class Lexer : public gc
   const gc_char * m_fileName;
   SymbolMap & m_symbolMap;
   IErrorReporter & m_errors;
-  
+
   /**
    * The stream offset of the beginning of the line. We use that to calculate the columns
    * position of all characters in a line instead of incrementing a column.
@@ -206,7 +206,7 @@ class Lexer : public gc
    * The coordinates of the token we just returned.
    */
   SourceCoords m_tokCoords;
-  
+
   class StreamErrorReporter : public IStreamDecoderErrorReporter
   {
     Lexer & m_outer;
@@ -214,18 +214,18 @@ class Lexer : public gc
     StreamErrorReporter ( Lexer & outer ) : m_outer( outer ) {};
     void error ( off_t offset, off_t outOffset, const gc_char * message );
   };
-  
+
   StreamErrorReporter m_streamErrors;
   UTF8StreamDecoder m_decoder;
-  
+
   int32_t m_curChar;
-  
+
   bool m_inNestedComment;
   StringCollector m_strBuf;
-  
+
   Token::Enum m_curToken;
-  const gc_char * m_valueString; 
-  
+  const gc_char * m_valueString;
+
   static const int32_t HT = 9;
   static const int32_t LF = '\n';
   static const int32_t CR = '\r';
@@ -234,20 +234,20 @@ class Lexer : public gc
   static const int32_t U_NEXT_LINE = 0x85;
   static const int32_t U_LINE_SEP = 0x2028;
   static const int32_t U_PARA_SEP = 0x2029;
-  
+
 public:
   Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors );
-  
+
   Token::Enum nextToken ()
   {
     return m_curToken = _nextToken();
   }
-  
+
 private:
   void error ( const gc_char * message, ... );
-  
+
   int32_t validateCodePoint ( int32_t cp );
-  
+
   /**
   * Unget the character in {@link #m_curChar} and replace it with another one. The next
   * {@link #nextChar()} will return the value that used to be in {@link #m_curChar}. It function
@@ -282,17 +282,18 @@ private:
   }
 
   int nextChar ();
-  
+
   void saveCoords ()
   {
     m_tokCoords.line = m_line;
     m_tokCoords.column = m_decoder.offset() - m_lineOffset + 1;
   }
-  
+
   Token::Enum _nextToken ();
-  
+
   Token::Enum scanString ();
-  int32_t scanInlineHexEscape ();
+  int32_t scanUnicodeEscape ();
+  uint8_t scanHexEscape ();
 
   static bool isNewLine ( int32_t ch );
   static bool isWhitespace ( int32_t ch );
