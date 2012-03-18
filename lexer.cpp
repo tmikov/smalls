@@ -142,9 +142,9 @@ int Lexer::nextChar ()
   case CR:
     {
       // Must peek into the next char. If it is LF or U_NEXT_LINE, collapse it
-      int32_t next = m_decoder.get();
-      if (next != LF && next != U_NEXT_LINE)
-        m_decoder.unget( next ); // Nope. Just a single CR. We must unget the extra character
+      int32_t next = m_decoder.peek();
+      if (next == LF || next == U_NEXT_LINE)
+        m_decoder.advance(1);
     }
     // FALL
   case U_NEXT_LINE:
