@@ -138,19 +138,16 @@ int Lexer::nextChar ()
 {
   int32_t ch = m_decoder.get();
   
-  // Translate CR, CR LF, CR U_NEXT_LINE, U_NEXT_LINE, U_LINE_SEP into LF and update the line number
+  // Translate CR, CR LF, U_NEXT_LINE, U_LINE_SEP, U_PARA_SEP into LF and update the line number
   switch (ch)
   {
   case CR:
-    {
-      // Must peek into the next char. If it is LF or U_NEXT_LINE, collapse it
-      int32_t next = m_decoder.peek();
-      if (next == LF || next == U_NEXT_LINE)
-        m_decoder.advance(1);
-    }
+    if (m_decoder.peek() == LF) // Collapse CR LF into LF
+      m_decoder.advance(1);
     // FALL
   case U_NEXT_LINE:
   case U_LINE_SEP:
+  case U_PARA_SEP:
     ch = LF;
     // FALL
   case LF:
@@ -270,10 +267,10 @@ Token::Enum Lexer::_nextToken ()
 
     // <comment>
     case ';':
-      // Skip until we reach line end, paragraph separator or EOF
+      // Skip until we reach line end or EOF
       do
         nextChar();
-      while (m_curChar >= 0 && m_curChar != LF && m_curChar != U_PARA_SEP);
+      while (m_curChar != -1 && m_curChar != LF);
       break;
 
 //    // <digit>
