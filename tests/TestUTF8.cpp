@@ -38,19 +38,22 @@ void TestUTF8::tearDown ( )
 {
 }
 
+namespace
+{
 class ErrorReporter : public IStreamDecoderErrorReporter
 {
 public:
   int errorCount;
-  
+
   ErrorReporter () { errorCount = 0; };
-  
+
   virtual void error ( off_t offset, off_t outOffset, const char * message )
   {
     std::cerr << "\n     error at offset " << offset <<" and output offset " << outOffset << ":" << message << std::endl;
     ++this->errorCount;
   }
 };
+}
 
 void TestUTF8::testUTF8StreamDecoder ( )
 {
@@ -59,34 +62,34 @@ void TestUTF8::testUTF8StreamDecoder ( )
   UTF8StreamDecoder dec0( t0, errors );
   CPPUNIT_ASSERT( 'a' == dec0.get() );
   CPPUNIT_ASSERT_EQUAL( -1, dec0.get() );
-  
+
   CharBufInput t1(
     "ab"
-    "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E" 
+    "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"
     "\xEF\xBB\xBF\xF0\xA3\x8E\xB4"
   );
   UTF8StreamDecoder dec1( t1, errors );
-  
+
   CPPUNIT_ASSERT( 'a' == dec1.get() );
   CPPUNIT_ASSERT( 'b' == dec1.get() );
 
   CPPUNIT_ASSERT_EQUAL(  0x65E5, dec1.get() );
   CPPUNIT_ASSERT_EQUAL(  0x672C, dec1.get() );
   CPPUNIT_ASSERT_EQUAL(  0x8A9E, dec1.get() );
-  
+
   CPPUNIT_ASSERT_EQUAL(  0xFEFF, dec1.get() );
   CPPUNIT_ASSERT_EQUAL( 0x233B4, dec1.get() );
-  
+
   CPPUNIT_ASSERT_EQUAL( -1, dec1.get() );
   CPPUNIT_ASSERT_EQUAL( 0, errors.errorCount );
-  
+
   // Force an error
-  CharBufInput t2( 
+  CharBufInput t2(
     "a"
     "\xC0\x80"
   );
   UTF8StreamDecoder dec2( t2, errors );
-  
+
   CPPUNIT_ASSERT( 'a' == dec2.get() );
   CPPUNIT_ASSERT_EQUAL( UNICODE_REPLACEMENT_CHARACTER, dec2.get() );
   CPPUNIT_ASSERT_EQUAL( 1, errors.errorCount );
@@ -97,19 +100,19 @@ void TestUTF8::testUTF8Encoder ()
 {
   char buf[8];
   int len;
-  
+
   len = encodeUTF8( buf, 0 );
   CPPUNIT_ASSERT_EQUAL( 1, len );
   CPPUNIT_ASSERT( std::memcmp( buf, "\x00", 1 ) == 0 );
-  
+
   len = encodeUTF8( buf, 'a' );
   CPPUNIT_ASSERT_EQUAL( 1, len );
   CPPUNIT_ASSERT( std::memcmp( buf, "a", 1 ) == 0 );
-  
+
   len = encodeUTF8( buf, 0x233B4 );
   CPPUNIT_ASSERT_EQUAL( 4, len );
   CPPUNIT_ASSERT( std::memcmp( buf, "\xF0\xA3\x8E\xB4", 4 ) == 0 );
-  
+
   len = encodeUTF8( buf, 0x65E5 );
   CPPUNIT_ASSERT_EQUAL( 3, len );
   CPPUNIT_ASSERT( std::memcmp( buf, "\xE6\x97\xA5", 3 ) == 0 );
