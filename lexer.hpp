@@ -286,7 +286,10 @@ private:
   
   Token::Enum scanString ();
   int32_t scanInlineHexEscape ();
-  
+
+  static bool isNewLine ( int32_t ch );
+  static bool isWhitespace ( int32_t ch );
+  static bool isDelimiter ( int32_t ch );
 };
 
 #endif

@@ -167,26 +167,38 @@ int Lexer::nextChar ()
   return m_curChar = ch;
 }
 
-static bool isWhitespace ( int32_t ch )
+#define NEWLINE_CASE    case LF
+#define WHITESPACE_CASE NEWLINE_CASE: case ' ': case '\f': case '\t': case '\v'
+
+
+inline bool Lexer::isNewLine ( int32_t ch )
 {
   switch (ch)
   {
-  case ' ': case '\f': case '\n': case '\r': case '\t': case '\v':
-    return true;
-  default:
-    return false;
+  NEWLINE_CASE: return true;
+  default: return false;
+  }
+}
+
+inline bool Lexer::isWhitespace ( int32_t ch )
+{
+  switch (ch)
+  {
+  WHITESPACE_CASE: return true;
+  default: return false;
   };
 }
 
-static bool isDelimiter ( int32_t ch )
+bool Lexer::isDelimiter ( int32_t ch )
 {
   switch (ch)
   {
+  WHITESPACE_CASE:
   case '(': case ')': case '[': case ']': case '"': case ';': case '#':
   case -1: // EOF is also a delimiter
     return true;
   default:
-    return isWhitespace( ch );
+    return false;
   }
 }
 
