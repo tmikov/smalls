@@ -236,7 +236,7 @@ class Lexer : public gc
   static const int32_t U_PARA_SEP = 0x2029;
 
 public:
-  Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors );
+  Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors );
 
   Token::Enum nextToken ()
   {

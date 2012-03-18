@@ -86,7 +86,7 @@ const char * Token::s_reprs[] =
 #undef _MK_ENUM
 
 
-Lexer::Lexer ( BufferedCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors )
+Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, IErrorReporter & errors )
   : m_fileName( fileName ), m_symbolMap( symbolMap ), m_errors( errors ),
     m_tokCoords( fileName, 0, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
