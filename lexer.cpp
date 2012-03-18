@@ -94,6 +94,7 @@ Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolM
   m_curToken = Token::NONE;
   m_inNestedComment = false;
   m_valueString = NULL;
+  m_valueIdent = NULL;
 
   m_lineOffset = 0;
   m_line = 1;
@@ -302,7 +303,8 @@ Token::Enum Lexer::_nextToken ()
       {
         m_strBuf.reset();
         m_strBuf.append( '*' );
-        return scanRemainingIdentifier();
+        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+          return res;
       }
       break;
 
@@ -350,7 +352,8 @@ Token::Enum Lexer::_nextToken ()
         {
           m_strBuf.reset();
           m_strBuf.append( '/' );
-          return scanRemainingIdentifier();
+          if ( (res = scanRemainingIdentifier()) != Token::NONE)
+            return res;
         }
       }
       break;
@@ -447,10 +450,11 @@ Token::Enum Lexer::_nextToken ()
     case '!': case '$': case '%': case '&':/*case '*': case '/':*/case ':': case '<':
     case '=': case '>': case '?': case '^': case '_': case '~':
       {
-        int saveCh = m_curChar;
+        m_strBuf.reset();
+        m_strBuf.append( (char)m_curChar );
         nextChar();
-//        if ( (res = scanRestIdentifier(saveCh)) != Token::NONE)
-//          return res;
+        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+          return res;
       }
       break;
 //
@@ -531,13 +535,14 @@ Token::Enum Lexer::_nextToken ()
           nextChar();
         while (isWhitespace(m_curChar));
       }
-//      else if (Character.isLetter(m_curChar))
-//      {
-//        int saveCh = m_curChar;
-//        nextChar();
-//        if ( (res = scanRestIdentifier(saveCh)) != null)
-//          return res;
-//      }
+      else if (isAlpha(m_curChar))
+      {
+        m_strBuf.reset();
+        m_strBuf.appendCodePoint( m_curChar );
+        nextChar();
+        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+          return res;
+      }
       else
       {
         std::string tmp;
@@ -784,5 +789,66 @@ uint8_t Lexer::scanOctalEscape ()
 
 Token::Enum Lexer::scanRemainingIdentifier ()
 {
-  return Token::EOFTOK;
+  for(;;)
+  {
+    switch (m_curChar)
+    {
+    // <digit>
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+    // <special subsequent>
+    case '+': case '-': case '.': case '@':
+    // <special initial>
+    case '!': case '$': case '%': case '&': case '*': case '/': case ':': case '<':
+    case '=': case '>': case '?': case '^': case '_': case '~':
+      m_strBuf.append( (char)m_curChar );
+      nextChar();
+      break;
+
+    // <inline hex escape>
+    case '\\':
+      nextChar();
+      if (m_curChar == 'u') // \u -> identifier starting with an inline Unicode escape
+      {
+        nextChar();
+        m_strBuf.appendCodePoint(scanUnicodeEscape(4));
+      }
+      else if (m_curChar == 'U') // \U -> identifier starting with an inline Unicode escape
+      {
+        nextChar();
+        m_strBuf.appendCodePoint(scanUnicodeEscape(8));
+      }
+      else
+      {
+        error( 0, "Invalid escape in an identifier" );
+        // Leave the character to be processed in the next iteration
+      }
+      break;
+
+    default:
+      if (isAlpha(m_curChar))
+      {
+        m_strBuf.appendCodePoint(m_curChar);
+        nextChar();
+        break;
+      }
+      else
+        goto exitLoop;
+    }
+  }
+exitLoop:
+
+  m_strBuf.append( 0 );
+  const gc_char * name = m_strBuf.createGCString();
+
+  if (!isDelimiter(m_curChar))
+    error( 0, "Identifier \"%s\" not terminated by a delimiter", name );
+
+  return identifier( name );
+}
+
+Token::Enum Lexer::identifier ( const gc_char * name )
+{
+  m_valueIdent = m_symbolMap.newSymbol( name );
+  return Token::IDENT;
 }

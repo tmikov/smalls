@@ -225,6 +225,7 @@ class Lexer : public gc
 
   Token::Enum m_curToken;
   const gc_char * m_valueString;
+  Symbol * m_valueIdent;
 
   static const int32_t HT = 9;
   static const int32_t LF = '\n';
@@ -243,15 +244,9 @@ public:
     return m_curToken = _nextToken();
   }
 
-  Token::Enum curToken () const
-  {
-    return m_curToken;
-  }
-
-  const gc_char * getValueString () const
-  {
-    return m_valueString;
-  }
+  Token::Enum curToken () const { return m_curToken; }
+  const gc_char * valueString () const { return m_valueString; }
+  Symbol * valueIdent () const { return m_valueIdent; }
 
 private:
   void error ( int ofs, const gc_char * message, ... );
@@ -332,10 +327,15 @@ private:
   uint8_t scanHexEscape ();
   uint8_t scanOctalEscape ();
   Token::Enum scanRemainingIdentifier ();
+  Token::Enum identifier ( const gc_char * name );
 
   static bool isNewLine ( int32_t ch );
   static bool isWhitespace ( int32_t ch );
   static bool isDelimiter ( int32_t ch );
+  static bool isAlpha ( int32_t ch )
+  {
+    return ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z';
+  }
 };
 
 #endif

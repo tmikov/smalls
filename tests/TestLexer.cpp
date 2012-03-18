@@ -108,13 +108,13 @@ void TestLexer::testStrings ()
     Lexer lex( t1, "input1", map, err );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
-    CPPUNIT_ASSERT( std::strcmp("aaa", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("aaa", lex.valueString())==0 );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
-    CPPUNIT_ASSERT( std::strcmp("\a\b\t\n\v\f\r\a\"\\", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\a\b\t\n\v\f\r\a\"\\", lex.valueString())==0 );
 
     // Octal
     //
@@ -123,19 +123,19 @@ void TestLexer::testStrings ()
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("\1", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\1", lex.valueString())==0 );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("\12", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\12", lex.valueString())==0 );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("\123", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\123", lex.valueString())==0 );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("\123" "4", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\123" "4", lex.valueString())==0 );
 
     // Hex
     //
@@ -145,7 +145,7 @@ void TestLexer::testStrings ()
     CPPUNIT_ASSERT( err.haveErr() );
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("\x12", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\x12", lex.valueString())==0 );
 
     // Unicode
     //
@@ -158,13 +158,13 @@ void TestLexer::testStrings ()
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
 
-    CPPUNIT_ASSERT( std::strcmp("\x09", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\x09", lex.valueString())==0 );
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("\x09", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("\x09", lex.valueString())==0 );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
@@ -172,11 +172,11 @@ void TestLexer::testStrings ()
     // End-of-line escape
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("aaabbb", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("aaabbb", lex.valueString())==0 );
 
     CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
-    CPPUNIT_ASSERT( std::strcmp("aaaccc", lex.getValueString())==0 );
+    CPPUNIT_ASSERT( std::strcmp("aaaccc", lex.valueString())==0 );
 
     CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
   }
@@ -235,6 +235,8 @@ void TestLexer::testLexer ( )
     "(\n"
     "; , ,\n"
     "(\n"
+
+    "aaa"
   );
   SymbolMap map;
   ErrorReporter err;
@@ -255,7 +257,7 @@ void TestLexer::testLexer ( )
 
   // Test strings
   CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
-  CPPUNIT_ASSERT( std::strcmp("aaa", lex.getValueString())==0 );
+  CPPUNIT_ASSERT( std::strcmp("aaa", lex.valueString())==0 );
 
   // Test comments
   CPPUNIT_ASSERT( Token::COMMA==lex.nextToken() );
@@ -265,6 +267,9 @@ void TestLexer::testLexer ( )
 
   CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
   CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
+
+  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("aaa", lex.valueIdent()->name) == 0 );
 
   CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
 }
