@@ -26,7 +26,7 @@ class StringCollector
   char m_staticBuf[32];
   gc_char * m_buf;
   unsigned m_bufSize, m_len;
-  
+
 public:
   StringCollector ()
   {
@@ -34,27 +34,27 @@ public:
     m_bufSize = sizeof(m_staticBuf);
     m_len = 0;
   }
-  
+
   ~StringCollector()
   {
     if (m_buf != m_staticBuf)
       GC_FREE( m_buf );
   }
-  
+
   void ensureFreeSpace ( unsigned freeSpace )
   {
     if (m_len + freeSpace > m_bufSize)
       growBuffer( m_len + freeSpace );
   }
-  
+
   void append ( const char * src, unsigned len );
-  
+
   void append ( char ch )
   {
     ensureFreeSpace( 1 );
     m_buf[m_len++] = ch;
   }
-  
+
   void appendCodePoint ( int32_t codePoint )
   {
     if (codePoint < 128)
@@ -62,19 +62,27 @@ public:
     else
       appendUTF8( codePoint );
   }
-  
+
   const gc_char * createGCString ();
-  
+
   void reset ()
   {
     m_len = 0;
   }
-  
-  unsigned length () const 
+
+  unsigned length () const
   {
     return m_len;
   }
-  
+
+  /**
+   * Temporary access to the buffer
+   */
+  const char * buf () const
+  {
+    return m_buf;
+  }
+
 private:
   void growBuffer ( unsigned minSize );
   void appendUTF8 ( int32_t ch );

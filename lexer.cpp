@@ -165,6 +165,12 @@ std::string & Lexer::escapeStringChar ( std::string & buf, uint32_t ch )
   }
 }
 
+std::string Lexer::escapeStringChar ( uint32_t ch )
+{
+  std::string res;
+  return escapeStringChar( res, ch );
+}
+
 /**
  * Generate a properly escaped string representation of a code point sequence.
  */
@@ -359,96 +365,67 @@ Token::Enum Lexer::_nextToken ()
       break;
 
 
-//    // <digit>
-//    case '0': case '1': case '2': case '3': case '4':
-//    case '5': case '6': case '7': case '8': case '9':
-//      if ( (res = scanNumber()) != null)
-//        return res;
-//      break;
-//
-//    case '#':
-//      nextChar();
-//      switch (m_curChar)
-//      {
-///*
-//      case '%': // Extension: system identifiers
-//        nextChar();
-//        if ( (res = scanRestIdentifier( '#', '%' )) != null)
-//          return res;
-//        break;
-//*/
-//      case 'i': case 'I': case 'e': case 'E': // number exactness prefix
-//      case 'b': case 'B': // binary number
-//      case 'o': case 'O': // octal
-//      case 'd': case 'D': // decimal
-//      case 'x': case 'X': // hex
-//        {
-//          ungetChar( '#' );
-//          if ( (res = scanNumber()) != null)
-//            return res;
-//        }
-//        break;
-//
-//      case '|': // #| Nested comment
-//        nextChar();
-//        if (!m_inNestedComment)
-//          scanNestedComment();
-//        else
-//          return Token::NESTED_COMMENT_START;
-//        break;
-//
-///* TODO:
-//    case '!': // #!r6rs
-//      ...
-//*/
-//
-//      case ';': // #; datum comment
-//        nextChar();
-//        return Token::DATUM_COMMENT;
-//
-//
-//      case '(':  /* #( */ nextChar(); return Token::HASH_LPAR;
-//      case '\'': /* #' */ nextChar(); return Token::HASH_APOSTR;
-//      case '`':  /* #` */ nextChar(); return Token::HASH_ACCENT;
-//      case ',':  /* #, #,@ */
-//        nextChar();
-//        if (m_curChar == '@') // #,@
-//        {
-//          nextChar();
-//          return Token::HASH_COMMA_AT;
-//        }
-//        else
-//          return Token::HASH_COMMA;
-//
-//      case 't': case 'T': // #t #T
-//        nextChar();
-//        if (!isDelimiter(m_curChar))
-//          error( null, "Bad #x form" );
-//        m_valueBool = true;
-//        return Token::BOOL;
-//      case 'f': case 'F': // #f #F
-//        nextChar();
-//        if (!isDelimiter(m_curChar))
-//          error( null, "Bad #x form" );
-//        m_valueBool = false;
-//        return Token::BOOL;
-//
-//      case '\\': // #\ character
-//        nextChar();
-//        if ( (res = scanCharacter()) != null)
-//          return res;
-//        break;
-//
-//      default:
-//        error( null, "Illegal lexeme \"%s\"", escapeToString(new int[]{ '#', m_curChar }, 0, 2 ));
-//        nextChar();
-//        break;
-//      }
-//      break;
-//
+    // <digit>
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+      if ( (res = scanNumber(3)) != Token::NONE)
+        return res;
+      break;
+
+    case '#':
+      nextChar();
+      switch (m_curChar)
+      {
+      case ';': // #; datum comment
+        nextChar();
+        return Token::DATUM_COMMENT;
+
+      case '(':  /* #( */ nextChar(); return Token::HASH_LPAR;
+      case '\'': /* #' */ nextChar(); return Token::HASH_APOSTR;
+      case '`':  /* #` */ nextChar(); return Token::HASH_ACCENT;
+      case ',':  /* #, #,@ */
+        nextChar();
+        if (m_curChar == '@') // #,@
+        {
+          nextChar();
+          return Token::HASH_COMMA_AT;
+        }
+        else
+          return Token::HASH_COMMA;
+
+      case 't': case 'T': // #t #T
+        nextChar();
+        if (!isDelimiter(m_curChar))
+          error( 0, "Bad #x form" );
+        m_valueBool = true;
+        return Token::BOOL;
+      case 'f': case 'F': // #f #F
+        nextChar();
+        if (!isDelimiter(m_curChar))
+          error( 0, "Bad #x form" );
+        m_valueBool = false;
+        return Token::BOOL;
+
+      case '"': //  character constant
+        nextChar();
+        if ( (res = scanCharacterConstant()) != Token::NONE)
+          return res;
+        break;
+
+      default:
+        {
+          int32_t tmp[] = { '#', m_curChar };
+          m_errors->error( m_tokCoords, formatGCStr("Illegal lexeme \"%s\"", escapeToString(tmp,2 ).c_str()) );
+          nextChar();
+        }
+        break;
+      }
+      break;
+
     // <identifier>
     case '!': case '$': case '%': case '&':/*case '*': case '/':*/case ':': case '<':
     case '=': case '>': case '?': case '^': case '_': case '~':
+    case '|':
       {
         m_strBuf.reset();
         m_strBuf.append( (char)m_curChar );
@@ -457,76 +434,64 @@ Token::Enum Lexer::_nextToken ()
           return res;
       }
       break;
-//
-//    // <peculiar identifier> "+"
-//    case '+':
-//      nextChar();
-//      if (isDelimiter(m_curChar))
-//      {
-//        if ( (res = identifier( "+" )) != null)
-//          return res;
-//      }
-//      else
-//      {
-//        ungetChar('+');
-//        if ( (res = scanNumber()) != null)
-//          return res;
-//      }
-//      break;
-//
-//    // <peculiar identifier> "-" "->"
-//    case '-':
-//      nextChar();
-//      if (isDelimiter(m_curChar)) // just '-' ?
-//      {
-//        if ( (res = identifier("-")) != null)
-//          return res;
-//      }
-//      else if (m_curChar == '>') // "->" ?
-//      {
-//        nextChar();
-//        if ( (res = scanRestIdentifier('-', '>')) != null)
-//          return res;
-//      }
-//      else
-//      {
-//        ungetChar('-');
-//        if ( (res = scanNumber()) != null)
-//          return res;
-//      }
-//      break;
-//
-//    // <peculiar identifier> "..."
-//    case '.':
-//      nextChar();
-//      if (isDelimiter(m_curChar))
-//        return Token::DOT;
-//      else if (m_curChar >= '0' && m_curChar <= '9')
-//      {
-//        ungetChar( '.' );
-//        if ( (res = scanNumber()) != null)
-//          return res;
-//      }
-//      else
-//      {
-//        if ( (res = scanRestIdentifier('.')) != null)
-//          return res;
-//      }
-//      break;
-//
-//    // <inline hex escape>
-//    case '\\':
-//      nextChar();
-//      if (m_curChar == 'x') // \x -> identifier starting with an inline hex escape
-//      {
-//        nextChar();
-//        if ( (res = scanRestIdentifier( scanInlineHexEscape() )) != null)
-//          return res;
-//      }
-//      else
-//        error( null, "\"\\\" cannot start a lexeme" );
-//      break;
-//
+
+    // <peculiar identifier> "+"
+    case '+':
+      nextChar();
+      if (m_curChar >= '0' && m_curChar <= '9' || m_curChar == '.')
+      {
+        if ( (res = scanNumber(1)) != Token::NONE)
+          return res;
+      }
+      else
+      {
+        m_strBuf.reset();
+        m_strBuf.append( '+' );
+        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+          return res;
+      }
+      break;
+
+    // <peculiar identifier> "-" "->"
+    case '-':
+      nextChar();
+      if (m_curChar >= '0' && m_curChar <= '9' || m_curChar == '.')
+      {
+        if ( (res = scanNumber(2)) != Token::NONE)
+          return res;
+      }
+      else
+      {
+        m_strBuf.reset();
+        m_strBuf.append( '-' );
+        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+          return res;
+      }
+      break;
+
+    // <peculiar identifier> "..."
+    case '.':
+      nextChar();
+      if (m_curChar >= '0' && m_curChar <= '9')
+      {
+        if ( (res = scanNumber(4)) != Token::NONE)
+          return res;
+      }
+      else
+      {
+        m_strBuf.reset();
+        m_strBuf.append('.');
+        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+          return res;
+      }
+      break;
+
+    // <inline hex escape>
+    case '\\':
+      if ( (res = scanRemainingIdentifier()) != Token::NONE)
+        return res;
+      break;
+
     default:
       if (isWhitespace(m_curChar))
       {
@@ -545,8 +510,7 @@ Token::Enum Lexer::_nextToken ()
       }
       else
       {
-        std::string tmp;
-        error( 0, "\"%s\" cannot start a lexeme", escapeStringChar( tmp, m_curChar ).c_str() );
+        error( 0, "\"%s\" cannot start a lexeme", escapeStringChar( m_curChar ).c_str() );
         nextChar();
       }
       break;
@@ -617,6 +581,42 @@ exitLoop:;
     error( 0, "EOF in comment started on line "+ nestedCommentStart.line );
 }
 
+Token::Enum Lexer::scanCharacterConstant ()
+{
+  if (m_curChar == '"')
+  {
+    error( 0, "Invalid empty character constant" );
+    nextChar();
+    m_valueInteger = ' ';
+    return Token::INTEGER;
+  }
+  switch (scanSingleCharacter())
+  {
+  case Token::INTEGER: // 8-bit character
+  case Token::STR:     // Unicode codepoint
+    break;
+  case Token::NONE:    // error
+    m_valueInteger = ' ';
+    break;
+  case Token::EOFTOK:  // eof/error
+    m_valueInteger = ' ';
+    return Token::INTEGER;
+  default:
+    assert( false );
+  }
+
+  if (m_curChar != '"')
+    error( 0, "Character constant not closed" );
+  else
+  {
+    nextChar();
+    if (!isDelimiter(m_curChar))
+      error( 0, "Character constant not followed by a delimiter" );
+  }
+
+  return Token::INTEGER;
+}
+
 Token::Enum Lexer::scanString ()
 {
   m_strBuf.reset();
@@ -628,89 +628,126 @@ Token::Enum Lexer::scanString ()
       nextChar();
       break;
     }
-    else if (m_curChar < 0)
+    switch (scanSingleCharacter())
     {
-      error( 0, "Unterminated string constant at end of input. String started on line %u column %u",
-              m_tokCoords.line, m_tokCoords.column );
+    case Token::INTEGER:
+      m_strBuf.append( (char)m_valueInteger );
       break;
-    }
-    else if (m_curChar == '\n')
-    {
-      m_errors->error( m_tokCoords, "Unterminated string constant" );
+    case Token::STR:
+      m_strBuf.appendCodePoint( (int32_t)m_valueInteger );
       break;
-    }
-    else if (m_curChar == '\\')
-    {
-      nextChar();
-      switch (m_curChar)
-      {
-      case -1:
-        error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
-               m_tokCoords.line, m_tokCoords.column );
-        goto exitLoop;
-
-      case 'a': m_strBuf.append( '\a' ); nextChar(); break;
-      case 'b': m_strBuf.append( '\b' ); nextChar(); break;
-      case 't': m_strBuf.append( '\t' ); nextChar(); break;
-      case 'n': m_strBuf.append( '\n' ); nextChar(); break;
-      case 'v': m_strBuf.append( '\v' ); nextChar(); break;
-      case 'f': m_strBuf.append( '\f' ); nextChar(); break;
-      case 'r': m_strBuf.append( '\r' ); nextChar(); break;
-      case '"': m_strBuf.append( '"' ); nextChar(); break;
-      case '\\': m_strBuf.append( '\\' ); nextChar(); break;
-
-      case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
-        m_strBuf.append( scanOctalEscape() );
-        break;
-      case 'x':
-        nextChar();
-        m_strBuf.append( scanHexEscape() );
-        break;
-      case 'u':
-        nextChar();
-        m_strBuf.appendCodePoint( scanUnicodeEscape(4) );
-        break;
-      case 'U':
-        nextChar();
-        m_strBuf.appendCodePoint( scanUnicodeEscape(8) );
-        break;
-
-      default:
-        // '\\' <intraline whitespace> '\n'
-        while (m_curChar != '\n' && isWhitespace(m_curChar))
-          nextChar();
-
-        if (m_curChar == '\n')
-          nextChar();
-        else if (m_curChar == -1)
-        {
-          error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
-                  m_tokCoords.line, m_tokCoords.column );
-          goto exitLoop;
-        }
-        else // Invalid escape!
-        {
-          // Slightly tricky. We can't display Unicode characters directly. We need to convert them
-          // to utf-8 strings
-          char tmp[8];
-          tmp[encodeUTF8( tmp, m_curChar )] = 0;
-          error( 0, "Invalid string escape \\%s", tmp );
-          nextChar();
-        }
-        break;
-      }
-    }
-    else
-    {
-      m_strBuf.appendCodePoint( m_curChar );
-      nextChar();
+    case Token::EOFTOK:
+      goto exitLoop;
+    case Token::NONE:
+      break;
+    default:
+      assert( false );
     }
   }
 exitLoop:
 
+  if (!isDelimiter(m_curChar))
+    error( 0, "String not followed by a delimiter" );
+
   m_strBuf.append( 0 );
   m_valueString = m_strBuf.createGCString();
   return Token::STR;
+}
+
+/**
+ * Process one character and store it in m_valueInteger. The return value:
+ * <ul>
+ * <li>Token::EOFTOK - stop processing the string constant (we reached EOF, LF)</li>
+ * <li>Token::NONE - error handling this character
+ * <li>Token::INTEGER - a 8-bit integer (possibly invalid Unicode character)
+ * <li>Token::STRING - a 32-bit validated Unicode codepoint
+ * </ul>
+ */
+Token::Enum Lexer::scanSingleCharacter ()
+{
+loop: // We loop only if we encounter \ LF sequence.
+  if (m_curChar < 0)
+  {
+    error( 0, "Unterminated string constant at end of input. String started on line %u column %u",
+            m_tokCoords.line, m_tokCoords.column );
+    return Token::EOFTOK;
+  }
+  else if (m_curChar == '\n')
+  {
+    m_errors->error( m_tokCoords, "Unterminated string constant" );
+    return Token::EOFTOK;
+  }
+  else if (m_curChar == '\\')
+  {
+    nextChar();
+    switch (m_curChar)
+    {
+    case -1:
+      error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
+              m_tokCoords.line, m_tokCoords.column );
+      return Token::EOFTOK;
+
+    case 'a': m_valueInteger = '\a'; nextChar(); return Token::INTEGER;
+    case 'b': m_valueInteger = '\b'; nextChar(); return Token::INTEGER;
+    case 't': m_valueInteger = '\t'; nextChar(); return Token::INTEGER;
+    case 'n': m_valueInteger = '\n'; nextChar(); return Token::INTEGER;
+    case 'v': m_valueInteger = '\v'; nextChar(); return Token::INTEGER;
+    case 'f': m_valueInteger = '\f'; nextChar(); return Token::INTEGER;
+    case 'r': m_valueInteger = '\r'; nextChar(); return Token::INTEGER;
+    case '"': m_valueInteger = '"'; nextChar();  return Token::INTEGER;
+    case '\\': m_valueInteger = '\\'; nextChar(); return Token::INTEGER;
+
+    case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+      m_valueInteger = scanOctalEscape();
+      return Token::INTEGER;
+    case 'x':
+      nextChar();
+      m_valueInteger = scanHexEscape();
+      return Token::INTEGER;
+    case 'u':
+      nextChar();
+      m_valueInteger = scanUnicodeEscape(4);
+      return Token::STR;
+    case 'U':
+      nextChar();
+      m_valueInteger = scanUnicodeEscape(8);
+      return Token::STR;
+
+    default:
+      // '\\' <intraline whitespace> '\n'
+      while (m_curChar != '\n' && isWhitespace(m_curChar))
+        nextChar();
+
+      if (m_curChar == '\n')
+      {
+        nextChar();
+        goto loop;
+      }
+      else if (m_curChar == -1)
+      {
+        error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
+                m_tokCoords.line, m_tokCoords.column );
+        return Token::EOFTOK;
+      }
+      else // Invalid escape!
+      {
+        // Slightly tricky. We can't display Unicode characters directly. We need to convert them
+        // to utf-8 strings
+        char tmp[8];
+        tmp[encodeUTF8( tmp, m_curChar )] = 0;
+        error( 0, "Invalid string escape \\%s", tmp );
+        nextChar();
+        return Token::NONE;
+      }
+      break;
+    }
+  }
+  else
+  {
+    m_valueInteger =  m_curChar;
+    nextChar();
+    return Token::STR;
+  }
 }
 
 /**
@@ -801,6 +838,7 @@ Token::Enum Lexer::scanRemainingIdentifier ()
     // <special initial>
     case '!': case '$': case '%': case '&': case '*': case '/': case ':': case '<':
     case '=': case '>': case '?': case '^': case '_': case '~':
+    case '|':
       m_strBuf.append( (char)m_curChar );
       nextChar();
       break;
@@ -851,4 +889,215 @@ Token::Enum Lexer::identifier ( const gc_char * name )
 {
   m_valueIdent = m_symbolMap.newSymbol( name );
   return Token::IDENT;
+}
+
+Token::Enum Lexer::scanNumber ( unsigned state )
+{
+  unsigned base = 10;
+  bool real = false;
+  bool err = false;
+  bool nnum = false; // Have we seen numeric characters
+  bool dpoint = false;
+  bool expo = false;
+
+  m_strBuf.reset();
+
+  switch (state)
+  {
+  default:
+    assert( false );
+  case 0: goto state_0;
+  case 1: goto state_1;
+  case 2: goto state_2;
+  case 3: goto state_3;
+  case 4: goto state_4;
+  }
+
+state_0:
+
+  if (m_curChar == '+')
+  {
+    nextChar();
+state_1:;
+  }
+  else if (m_curChar == '-')
+  {
+    nextChar();
+state_2:
+    m_strBuf.append( '-' );
+  }
+
+
+  if (m_curChar >= '0' && m_curChar <= '9')
+  {
+state_3:
+    if (m_curChar == '0')
+    {
+      nextChar();
+      if ((m_curChar | 32) == 'x')
+      {
+        m_strBuf.append( "0x", 2 );
+        nextChar();
+        base = 16;
+      }
+      else if ((m_curChar | 32) == 'b')
+      {
+        nextChar();
+        base = 2;
+      }
+      else
+      {
+        nnum = true;
+        m_strBuf.append( '0' );
+        if (!err && m_curChar >= '0' && m_curChar <= '7')
+        {
+          err = true;
+          error( -1, "C-style octal numbers are not supported" );
+        }
+      }
+    }
+    nnum |= scanUInt( base );
+  }
+
+  if (m_curChar == '.')
+  {
+    nextChar();
+state_4:
+    m_strBuf.append( '.' );
+    dpoint = true;
+    real = true;
+
+    if (!err && base != 10 && base != 16)
+    {
+      err = true;
+      m_errors->error( m_tokCoords, "Invalid floating point constant" );
+    }
+    if (!scanUInt( base ) && !nnum && !err) // check for something like  "+.e10"
+    {
+      err = true;
+      m_errors->error( m_tokCoords, "Invalid floating point constant" );
+    }
+  }
+  else
+  {
+    if (!err && !nnum)
+    {
+      err = true;
+      m_errors->error( m_tokCoords, "Invalid numeric constant" );
+    }
+  }
+
+  if ((m_curChar | 32) == 'e')
+  {
+    real = true;
+    expo = true;
+    if (!err && base != 10)
+    {
+      err = true;
+      m_errors->error( m_tokCoords, "Invalid decimal floating point number" );
+    }
+    m_strBuf.append( 'e' );
+    nextChar();
+    if (m_curChar == '+')
+      nextChar();
+    else if (m_curChar == '-')
+    {
+      m_strBuf.append( '-' );
+      nextChar();
+    }
+    scanUInt( 10 );
+  }
+  else if ((m_curChar | 32) == 'p')
+  {
+    real = true;
+    expo = true;
+    if (!err && base != 16)
+    {
+      err = true;
+      m_errors->error( m_tokCoords, "Invalid hexadecimal floating point constant" );
+    }
+    m_strBuf.append( 'p' );
+    nextChar();
+    if (m_curChar == '+')
+      nextChar();
+    else if (m_curChar == '-')
+    {
+      m_strBuf.append( '-' );
+      nextChar();
+    }
+    scanUInt( 10 );
+  }
+
+  m_strBuf.append( 0 );
+
+  if (!err && real && base == 16)
+  {
+    if (!expo)
+    {
+      err = true;
+      m_errors->error( m_tokCoords, "Exponent required in hexadecimal floating point constant" );
+    }
+  }
+
+  if (!err && !isDelimiter(m_curChar))
+  {
+    err = true;
+    m_errors->error( m_tokCoords, "Invalid number" );
+  }
+
+  if (!err)
+  {
+    if (!real)
+    {
+      errno = 0;
+      m_valueInteger = std::strtoll(m_strBuf.buf(),NULL,base);
+      if (errno != 0)
+      {
+        m_errors->error( m_tokCoords, "Integer constant overflow" );
+        err = true;
+      }
+    }
+    else
+    {
+      errno = 0;
+      m_valueReal = std::strtod(m_strBuf.buf(),NULL);
+      if (errno != 0)
+      {
+        m_errors->error( m_tokCoords, "Floating point constant overflow" );
+        err = true;
+      }
+    }
+  }
+
+  if (!real)
+  {
+    if (err)
+      m_valueInteger = 0;
+    return Token::INTEGER;
+  }
+  else
+  {
+    if (err)
+      m_valueReal = 0.0 / 0.0;
+    return Token::REAL;
+  }
+}
+
+bool Lexer::scanUInt ( unsigned base )
+{
+  bool nnum = false;
+  for(;;)
+  {
+    if (m_curChar == '_')
+      nextChar();
+    else if (isBaseDigit(base,m_curChar))
+    {
+      nnum = true;
+      m_strBuf.append( m_curChar );
+      nextChar();
+    }
+    else
+      break;
+  }
+  return nnum;
 }

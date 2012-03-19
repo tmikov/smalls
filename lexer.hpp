@@ -154,7 +154,8 @@ public:
    _MK_ENUM(EOFTOK,"<EOF>") \
    _MK_ENUM(IDENT,"identifier") \
    _MK_ENUM(BOOL,"#t or #f") \
-   _MK_ENUM(NUMBER,"number") \
+   _MK_ENUM(REAL,"real") \
+   _MK_ENUM(INTEGER,"integer") \
    _MK_ENUM(CHAR,"character") \
    _MK_ENUM(STR,"string") \
    _MK_ENUM(LPAR,"(") _MK_ENUM(RPAR,")") \
@@ -226,6 +227,9 @@ class Lexer : public gc
   Token::Enum m_curToken;
   const gc_char * m_valueString;
   Symbol * m_valueIdent;
+  int64_t m_valueInteger;
+  double  m_valueReal;
+  bool    m_valueBool;
 
   static const int32_t HT = 9;
   static const int32_t LF = '\n';
@@ -247,11 +251,14 @@ public:
   Token::Enum curToken () const { return m_curToken; }
   const gc_char * valueString () const { return m_valueString; }
   Symbol * valueIdent () const { return m_valueIdent; }
+  int64_t valueInteger () const { return m_valueInteger; };
+  double valueReal () const { return m_valueReal; };
 
 private:
   void error ( int ofs, const gc_char * message, ... );
 
   std::string & escapeStringChar ( std::string & buf, uint32_t ch );
+  std::string escapeStringChar ( uint32_t ch );
   std::string escapeToString ( const int32_t * codePoints, unsigned count );
 
   int32_t validateCodePoint ( int32_t cp );
@@ -322,12 +329,16 @@ private:
   Token::Enum _nextToken ();
 
   void scanNestedComment ();
+  Token::Enum scanCharacterConstant ();
   Token::Enum scanString ();
+  Token::Enum scanSingleCharacter ();
   int32_t scanUnicodeEscape ( unsigned maxLen );
   uint8_t scanHexEscape ();
   uint8_t scanOctalEscape ();
   Token::Enum scanRemainingIdentifier ();
   Token::Enum identifier ( const gc_char * name );
+  Token::Enum scanNumber ( unsigned state=0 );
+  bool scanUInt ( unsigned base );
 
   static bool isNewLine ( int32_t ch );
   static bool isWhitespace ( int32_t ch );
