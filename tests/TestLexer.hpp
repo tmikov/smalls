@@ -24,6 +24,7 @@
 class TestLexer : public CPPUNIT_NS::TestFixture {
   CPPUNIT_TEST_SUITE(TestLexer);
   CPPUNIT_TEST(testLexer);
+  CPPUNIT_TEST(testLexer2);
   CPPUNIT_TEST(testStrings);
   CPPUNIT_TEST_SUITE_END();
 
@@ -35,6 +36,7 @@ public:
 
 private:
   void testLexer();
+  void testLexer2();
   void testStrings();
 };
 

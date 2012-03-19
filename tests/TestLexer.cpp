@@ -236,7 +236,9 @@ void TestLexer::testLexer ( )
     "; , ,\n"
     "(\n"
 
-    "aaa"
+    "aaa - -- ->\n"
+
+    "#\"a\"\n"
   );
   SymbolMap map;
   ErrorReporter err;
@@ -268,8 +270,148 @@ void TestLexer::testLexer ( )
   CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
   CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
 
+  //  "aaa - -- ->\n"
   CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
   CPPUNIT_ASSERT( strcmp("aaa", lex.valueIdent()->name) == 0 );
+  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("-", lex.valueIdent()->name) == 0 );
+  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("--", lex.valueIdent()->name) == 0 );
+  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("->", lex.valueIdent()->name) == 0 );
+
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 'a'==lex.valueInteger() );
+
+  CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
+}
+
+void TestLexer::testLexer2 ( )
+{
+  CharBufInput t1(
+  "1\n"
+  "+1 -1 +100 -100\n"
+  "0x100 -0x100\n"
+  "0 -0 +0\n"
+  "0b1010 -0b1010\n"
+
+  "1.0 2.34\n"
+  "+0.2 -0.2\n"
+  ".2 +.2 +1. -2. 2.\n"
+  "3e0 4e+0 5e-0 6.0e0 7.0e-0\n"
+  "3e1 4e+1 5e-1 6.0e1 7.0e-1\n"
+  "1.2e3\n"
+
+  "0x1.0p2 0x1p-3\n"
+  "0xp2 0x.3\n"
+
+  "01 +.e10 1.2p10\n"
+  "0x1.2e10 0b10.0\n"
+  );
+  SymbolMap map;
+  ErrorReporter err;
+  Lexer lex( t1, "input5", map, err );
+
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 1==lex.valueInteger() );
+
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 1==lex.valueInteger() );
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( -1==lex.valueInteger() );
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 100==lex.valueInteger() );
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( -100==lex.valueInteger() );
+
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 0x100==lex.valueInteger() );
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( -0x100==lex.valueInteger() );
+
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 0==lex.valueInteger() );
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 0==lex.valueInteger() );
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 0==lex.valueInteger() );
+
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( 0xA==lex.valueInteger() );
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( -0xA==lex.valueInteger() );
+
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 1.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 2.34, lex.valueReal() );
+
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 0.2, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( -0.2, lex.valueReal() );
+
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 0.2, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 0.2, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 1.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( -2.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 2.0, lex.valueReal() );
+
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 3.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 4.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 5.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 6.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 7.0, lex.valueReal() );
+
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 30.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 40.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 0.5, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 60.0, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 0.7, lex.valueReal() );
+
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 1.2e3, lex.valueReal() );
+
+  //"0x1.0p2 0x1p-3\n"
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 0x1.0p2, lex.valueReal() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_EQUAL( 0x1p-3, lex.valueReal() );
+
+  //"0xp2 0x.3\n"
+  CPPUNIT_ASSERT( !err.haveErr() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_MESSAGE( "0xp2", err.haveErr() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_MESSAGE( "0x.3", err.haveErr() );
+
+  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT_MESSAGE( "01", err.haveErr() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_MESSAGE( "+.e10", err.haveErr() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_MESSAGE( "1.2p10", err.haveErr() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_MESSAGE( "0x1.2e10", err.haveErr() );
+  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT_MESSAGE( "0b10.0", err.haveErr() );
+
+
 
   CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
 }
