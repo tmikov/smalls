@@ -94,7 +94,7 @@ Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolM
   m_curToken = Token::NONE;
   m_inNestedComment = false;
   m_valueString = NULL;
-  m_valueIdent = NULL;
+  m_valueSymbol = NULL;
 
   m_lineOffset = 0;
   m_line = 1;
@@ -472,7 +472,9 @@ Token::Enum Lexer::_nextToken ()
     // <peculiar identifier> "..."
     case '.':
       nextChar();
-      if (m_curChar >= '0' && m_curChar <= '9')
+      if (isDelimiter(m_curChar))
+        return Token::DOT;
+      else if (m_curChar >= '0' && m_curChar <= '9')
       {
         if ( (res = scanNumber(4)) != Token::NONE)
           return res;
@@ -578,7 +580,7 @@ exitLoop:;
   m_inNestedComment = false;
 
   if (m_curToken == Token::EOFTOK)
-    error( 0, "EOF in comment started on line "+ nestedCommentStart.line );
+    error( 0, "EOF in comment started on line %u", nestedCommentStart.line );
 }
 
 Token::Enum Lexer::scanCharacterConstant ()
@@ -836,11 +838,25 @@ Token::Enum Lexer::scanRemainingIdentifier ()
     // <special subsequent>
     case '+': case '-': case '.': case '@':
     // <special initial>
-    case '!': case '$': case '%': case '&': case '*': case '/': case ':': case '<':
+    case '!': case '$': case '%': case '&': /*case '*':*/case '/': case ':': case '<':
     case '=': case '>': case '?': case '^': case '_': case '~':
     case '|':
       m_strBuf.append( (char)m_curChar );
       nextChar();
+      break;
+
+    case '*':
+      nextChar();
+      if (m_curChar != '/')
+        m_strBuf.append( '*' );
+      else
+      {
+        nextChar();
+        if (m_inNestedComment)
+          return Token::NESTED_COMMENT_END;
+        else
+          m_errors->error( m_tokCoords, "Unexpected */" );
+      }
       break;
 
     // <inline hex escape>
@@ -887,8 +903,8 @@ exitLoop:
 
 Token::Enum Lexer::identifier ( const gc_char * name )
 {
-  m_valueIdent = m_symbolMap.newSymbol( name );
-  return Token::IDENT;
+  m_valueSymbol = m_symbolMap.newSymbol( name );
+  return Token::SYMBOL;
 }
 
 Token::Enum Lexer::scanNumber ( unsigned state )

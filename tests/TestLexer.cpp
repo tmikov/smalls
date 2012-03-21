@@ -223,7 +223,7 @@ void TestLexer::testLexer ( )
     "*/(\n"
     ", ,@"
 
-    "\"aaa\""
+    "\"aaa\" "
 
     "/* aaa */,"
     "/* aaa\n"
@@ -239,6 +239,8 @@ void TestLexer::testLexer ( )
     "aaa - -- ->\n"
 
     "#\"a\"\n"
+
+    ".\n"
   );
   SymbolMap map;
   ErrorReporter err;
@@ -271,17 +273,19 @@ void TestLexer::testLexer ( )
   CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
 
   //  "aaa - -- ->\n"
-  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
-  CPPUNIT_ASSERT( strcmp("aaa", lex.valueIdent()->name) == 0 );
-  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
-  CPPUNIT_ASSERT( strcmp("-", lex.valueIdent()->name) == 0 );
-  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
-  CPPUNIT_ASSERT( strcmp("--", lex.valueIdent()->name) == 0 );
-  CPPUNIT_ASSERT( Token::IDENT==lex.nextToken() );
-  CPPUNIT_ASSERT( strcmp("->", lex.valueIdent()->name) == 0 );
+  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("aaa", lex.valueSymbol()->name) == 0 );
+  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("-", lex.valueSymbol()->name) == 0 );
+  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("--", lex.valueSymbol()->name) == 0 );
+  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( strcmp("->", lex.valueSymbol()->name) == 0 );
 
   CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 'a'==lex.valueInteger() );
+
+  CPPUNIT_ASSERT( Token::DOT==lex.nextToken() );
 
   CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
 }

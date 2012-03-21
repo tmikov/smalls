@@ -152,7 +152,7 @@ public:
 #define _DEF_TOKENS \
    _MK_ENUM(NONE,"<NONE>") \
    _MK_ENUM(EOFTOK,"<EOF>") \
-   _MK_ENUM(IDENT,"identifier") \
+   _MK_ENUM(SYMBOL,"symbol") \
    _MK_ENUM(BOOL,"#t or #f") \
    _MK_ENUM(REAL,"real") \
    _MK_ENUM(INTEGER,"integer") \
@@ -226,7 +226,7 @@ class Lexer : public gc
 
   Token::Enum m_curToken;
   const gc_char * m_valueString;
-  Symbol * m_valueIdent;
+  Symbol * m_valueSymbol;
   int64_t m_valueInteger;
   double  m_valueReal;
   bool    m_valueBool;
@@ -243,80 +243,30 @@ class Lexer : public gc
 public:
   Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, AbstractErrorReporter & errors );
 
+  SymbolMap & symbolMap () { return m_symbolMap; }
+  AbstractErrorReporter & errorReporter () { return *m_errors; }
+
   Token::Enum nextToken ()
   {
     return m_curToken = _nextToken();
   }
 
   Token::Enum curToken () const { return m_curToken; }
+  const SourceCoords & coords () const { return m_tokCoords; }
   const gc_char * valueString () const { return m_valueString; }
-  Symbol * valueIdent () const { return m_valueIdent; }
+  Symbol * valueSymbol () const { return m_valueSymbol; }
   int64_t valueInteger () const { return m_valueInteger; };
   double valueReal () const { return m_valueReal; };
+  bool valueBool () const { return m_valueBool; };
+
+  static std::string & escapeStringChar ( std::string & buf, uint32_t ch );
+  static std::string escapeStringChar ( uint32_t ch );
+  static std::string escapeToString ( const int32_t * codePoints, unsigned count );
 
 private:
   void error ( int ofs, const gc_char * message, ... );
 
-  std::string & escapeStringChar ( std::string & buf, uint32_t ch );
-  std::string escapeStringChar ( uint32_t ch );
-  std::string escapeToString ( const int32_t * codePoints, unsigned count );
-
   int32_t validateCodePoint ( int32_t cp );
-
-  /**
-  * Unget the character in {@link #m_curChar} and replace it with another one. The next
-  * {@link #nextChar()} will return the value that used to be in {@link #m_curChar}. It function
-  * <b>MUST</b> not be used to unget a line feed!
-  *
-  * <p>Source coordinates of the "ungotten" character are determined by assuming that it is the
-  * previous character, before {@link #m_curChar}, on the current line. They are the current column - 1.
-  * (That is why line feed must not be ungotten).
-  *
-  * <p>In general this function is needed for convenience, to enable an extra character lookahead in
-  * some rare cases. We need just one char. In theory it could be avoided with the cost of
-  * significantly more code, expanding the DFA. The pattern of usage is:
-  * <pre>
-  *   if (m_curChar = '1')
-  *   {
-  *     nextChar();
-  *     if (m_curChar == '2'))
-  *     {
-  *       ungetChar( '1' );
-  *       scan(); // scan() will first see '1' (in m_curChar) and only afterwards will obtain '2'
-  *     }
-  *   }
-  * </pre>
-  *
-  *
-  * @param ch the char to unget.
-  */
-  void ungetChar ( int32_t ch )
-  {
-    m_decoder.unget( m_curChar );
-    m_curChar = ch;
-  }
-
-  int32_t peek ()
-  {
-    return m_decoder.peek();
-  }
-
-  void acceptPeeked ( int32_t ch )
-  {
-    m_decoder.advance( 1 );
-    m_curChar = ch;
-  }
-
-  __forceinline bool lookAhead ( int32_t ch )
-  {
-    if (peek() == ch)
-    {
-      acceptPeeked( ch );
-      return true;
-    }
-    else
-      return false;
-  }
 
   void nextChar ();
 
