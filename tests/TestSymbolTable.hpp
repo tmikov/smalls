@@ -16,19 +16,19 @@
 */
 
 
-#ifndef TESTSYMBOLMAP_HPP
-#define	TESTSYMBOLMAP_HPP
+#ifndef TESTSYMBOLTABLE_HPP
+#define	TESTSYMBOLTABLE_HPP
 
 #include <cppunit/extensions/HelperMacros.h>
 
-class TestSymbolMap : public CPPUNIT_NS::TestFixture {
-  CPPUNIT_TEST_SUITE(TestSymbolMap);
+class TestSymbolTable : public CPPUNIT_NS::TestFixture {
+  CPPUNIT_TEST_SUITE(TestSymbolTable);
   CPPUNIT_TEST(testMethod);
   CPPUNIT_TEST_SUITE_END();
 
 public:
-  TestSymbolMap();
-  virtual ~TestSymbolMap();
+  TestSymbolTable();
+  virtual ~TestSymbolTable();
   void setUp();
   void tearDown();
 
@@ -36,5 +36,5 @@ private:
   void testMethod();
 };
 
-#endif	/* TESTSYMBOLMAP_HPP */
+#endif	/* TESTSYMBOLTABLE_HPP */
 

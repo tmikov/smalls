@@ -32,6 +32,8 @@
 
 #include <string>
 
+#include <boost/noncopyable.hpp>
+
 #include "gc/gc_cpp.h"
 #include "gc/gc_allocator.h"
 

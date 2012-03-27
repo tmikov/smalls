@@ -15,61 +15,8 @@
    limitations under the License.
 */
 
-#include "lexer.hpp"
+#include "Lexer.hpp"
 #include <cctype>
-
-#define _MK_ENUM(x) #x,
-const char * SymCode::s_names[] =
-{
-  _DEF_SYMCODES
-};
-#undef _MK_ENUM
-
-
-Symbol * SymbolMap::special ( const gc_char * name, SymCode::Enum code )
-{
-  Symbol * sym = new Symbol( name, code );
-  if (!m_map.insert( Map::value_type(name, sym) ).second)
-    throw std::logic_error( std::string(name) + " already defined" );
-  return sym;
-}
-
-Symbol * SymbolMap::newSymbol ( const gc_char * name )
-{
-  Map::iterator it;
-  if ( (it = m_map.find( name )) != m_map.end())
-    return it->second;
-  Symbol * sym = new Symbol( name, SymCode::NONE );
-  m_map[name] = sym;
-  return sym;
-}
-
-SymbolMap::SymbolMap() :
-  sym_quote             ( special( "quote", SymCode::QUOTE ) ),
-  sym_quasiquore        ( special( "quasiquote", SymCode::NONE /*SymCode::QUASIQUOTE*/ ) ),
-  sym_unquote           ( special( "unquote", SymCode::NONE /*SymCode::UNQUOTE*/ ) ),
-  sym_unquote_splicing  ( special( "unquote-splicing", SymCode::NONE /*SymCode::UNQUOTE_SPLICING*/ ) ),
-  sym_syntax            ( special( "syntax", SymCode::SYNTAX ) ),
-  sym_quasisyntax       ( special( "quasisyntax", SymCode::QUASISYNTAX ) ),
-  sym_unsyntax          ( special( "unsyntax", SymCode::UNSYNTAX ) ),
-  sym_unsyntax_splicing ( special( "unsyntax-splicing", SymCode::UNSYNTAX_SPLICING ) ),
-
-  sym_if                ( special( "if", SymCode::IF ) ),
-  sym_begin             ( special( "begin", SymCode::BEGIN ) ),
-  sym_lambda            ( special( "lambda", SymCode::LAMBDA ) ),
-  sym_define            ( special( "define", SymCode::DEFINE ) ),
-  sym_setbang           ( special( "set!", SymCode::SETBANG ) ),
-  sym_let               ( special( "let", SymCode::LET ) ),
-  sym_letrec            ( special( "letrec", SymCode::LETREC ) ),
-  sym_letrec_star       ( special( "letrec*", SymCode::LETREC_STAR ) ),
-
-  sym_builtin           ( special( "__%builtin", SymCode::BUILTIN ) ),
-  sym_define_macro      ( special( "define-macro", SymCode::DEFINE_MACRO ) ),
-  sym_define_identifier_macro ( special( "define-identifier-macro", SymCode::DEFINE_IDENTIFIER_MACRO ) ),
-  sym_define_det_macro  ( special( "define-set-macro", SymCode::DEFINE_SET_MACRO ) ),
-  sym_macro_env         ( special( "macro-env", SymCode::MACRO_ENV ) )
-{
-}
 
 #define _MK_ENUM(name,repr)  #name,
 const char * Token::s_names[] =
@@ -86,8 +33,8 @@ const char * Token::s_reprs[] =
 #undef _MK_ENUM
 
 
-Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, AbstractErrorReporter & errors )
-  : m_fileName( fileName ), m_symbolMap( symbolMap ), m_errors( &errors ),
+Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolTable & symbolTable, AbstractErrorReporter & errors )
+  : m_fileName( fileName ), m_symbolTable( symbolTable ), m_errors( &errors ),
     m_tokCoords( fileName, 0, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
   m_curChar = 0;
@@ -903,7 +850,7 @@ exitLoop:
 
 Token::Enum Lexer::identifier ( const gc_char * name )
 {
-  m_valueSymbol = m_symbolMap.newSymbol( name );
+  m_valueSymbol = m_symbolTable.newSymbol( name );
   return Token::SYMBOL;
 }
 

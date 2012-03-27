@@ -17,7 +17,7 @@
 
 
 #include "TestLexer.hpp"
-#include "../lexer.hpp"
+#include "../Lexer.hpp"
 
 CPPUNIT_TEST_SUITE_REGISTRATION ( TestLexer );
 
@@ -103,7 +103,7 @@ void TestLexer::testStrings ()
       "\"aaa\\\nbbb\""
       "\"aaa\\  \nccc\""
     );
-    SymbolMap map;
+    SymbolTable map;
     ErrorReporter err;
     Lexer lex( t1, "input1", map, err );
 
@@ -185,7 +185,7 @@ void TestLexer::testStrings ()
     CharBufInput t1(
       "\"aaa\nbbb\""
     );
-    SymbolMap map;
+    SymbolTable map;
     ErrorReporter err;
     Lexer lex( t1, "input1.1", map, err );
 
@@ -196,7 +196,7 @@ void TestLexer::testStrings ()
     CharBufInput t1(
       "\"aaa"
     );
-    SymbolMap map;
+    SymbolTable map;
     ErrorReporter err;
     Lexer lex( t1, "input2", map, err );
 
@@ -207,7 +207,7 @@ void TestLexer::testStrings ()
     CharBufInput t1(
       "\"aa\\"
     );
-    SymbolMap map;
+    SymbolTable map;
     ErrorReporter err;
     Lexer lex( t1, "input3", map, err );
 
@@ -242,7 +242,7 @@ void TestLexer::testLexer ( )
 
     ".\n"
   );
-  SymbolMap map;
+  SymbolTable map;
   ErrorReporter err;
   Lexer lex( t1, "input4", map, err );
 
@@ -312,7 +312,7 @@ void TestLexer::testLexer2 ( )
   "01 +.e10 1.2p10\n"
   "0x1.2e10 0b10.0\n"
   );
-  SymbolMap map;
+  SymbolTable map;
   ErrorReporter err;
   Lexer lex( t1, "input5", map, err );
 

@@ -75,7 +75,7 @@ public:
 
 };
 
-static void validate ( SymbolMap & map, ErrorReporter & err, Syntax * d )
+static void validate ( SymbolTable & map, ErrorReporter & err, Syntax * d )
 {
   CPPUNIT_ASSERT( !err.haveErr() );
 
@@ -102,7 +102,7 @@ static void validate ( SymbolMap & map, ErrorReporter & err, Syntax * d )
 
 void TestSyntaxReader::testParser ( )
 {
-  SymbolMap map;
+  SymbolTable map;
   ErrorReporter err;
   CharBufInput t1(
   "1000\n"

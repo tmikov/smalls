@@ -20,134 +20,10 @@
 
 #include <iostream>
 
-#include <boost/unordered_map.hpp>
-
 #include "AbstractErrorReporter.hpp"
 #include "utf-8.hpp"
 #include "StringCollector.hpp"
-
-#define _DEF_SYMCODES \
-  _MK_ENUM(NONE) \
-  _MK_ENUM(QUOTE) \
-/* Handled by a macro \
-  _MK_ENUM(QUASIQUOTE) \
-  _MK_ENUM(UNQUOTE) \
-  _MK_ENUM(UNQUOTE_SPLICING) \
-*/ \
-  _MK_ENUM(SYNTAX) \
-  _MK_ENUM(QUASISYNTAX) \
-  _MK_ENUM(UNSYNTAX) \
-  _MK_ENUM(UNSYNTAX_SPLICING) \
-  \
-  _MK_ENUM(IF) \
-  _MK_ENUM(BEGIN) \
-  _MK_ENUM(LAMBDA) \
-  _MK_ENUM(DEFINE) \
-  _MK_ENUM(SETBANG) \
-  _MK_ENUM(LET) \
-  _MK_ENUM(LETREC) \
-  _MK_ENUM(LETREC_STAR) \
-  \
-  _MK_ENUM(BUILTIN) \
-  _MK_ENUM(DEFINE_MACRO) \
-  _MK_ENUM(DEFINE_IDENTIFIER_MACRO) \
-  _MK_ENUM(DEFINE_SET_MACRO) \
-  _MK_ENUM(MACRO_ENV)
-
-struct SymCode
-{
-  #define _MK_ENUM(x)  x,
-  enum Enum
-  {
-    _DEF_SYMCODES
-  };
-  #undef _MK_ENUM
-
-  static const char * name ( Enum x )  { return s_names[x]; }
-private:
-  static const char * s_names[];
-};
-
-class Symbol : public gc
-{
-public:
-  const gc_char * const name;
-  SymCode::Enum const code;
-
-  Symbol ( const gc_char * name_, SymCode::Enum code_ )
-    : name( name_ ), code( code_ )
-  {}
-};
-
-struct gc_charstr_equal : public std::binary_function<const gc_char *,const gc_char *,bool>
-{
-  bool operator () ( const gc_char * a, const gc_char * b ) const
-  {
-    return std::strcmp( a, b ) == 0;
-  }
-};
-
-struct gc_charstr_hash : std::unary_function<const gc_char *, std::size_t>
-{
-  std::size_t operator () ( const gc_char * a ) const
-  {
-    std::size_t seed = 0;
-    unsigned t;
-    while ( (t = *((unsigned char *)a)) != 0)
-    {
-      boost::hash_combine( seed, t );
-      ++a;
-    }
-    return seed;
-  }
-};
-
-// We need to separate this in a base class so we can access it during
-// const member initialization in the constructor
-class SymbolMapBase : public gc
-{
-protected:
-  typedef boost::unordered_map<const gc_char *,
-                               Symbol *,
-                               gc_charstr_hash,
-                               gc_charstr_equal,
-                               gc_allocator<const gc_char *> > Map;
-  Map m_map;
-};
-
-class SymbolMap : public SymbolMapBase
-{
-  Symbol * special ( const gc_char * name, SymCode::Enum code );
-public:
-  SymbolMap ();
-
-  Symbol * newSymbol ( const gc_char * name );
-
-  Symbol * const sym_quote;
-  Symbol * const sym_quasiquore;
-  Symbol * const sym_unquote;
-  Symbol * const sym_unquote_splicing;
-  Symbol * const sym_syntax;
-  Symbol * const sym_quasisyntax;
-  Symbol * const sym_unsyntax;
-  Symbol * const sym_unsyntax_splicing;
-
-  Symbol * const sym_if;
-  Symbol * const sym_begin;
-  Symbol * const sym_lambda;
-  Symbol * const sym_define;
-  Symbol * const sym_setbang;
-  Symbol * const sym_let;
-  Symbol * const sym_letrec;
-  Symbol * const sym_letrec_star;
-
-  Symbol * const sym_builtin;
-  Symbol * const sym_define_macro;
-  Symbol * const sym_define_identifier_macro;
-  Symbol * const sym_define_det_macro;
-  Symbol * const sym_macro_env;
-};
-
+#include "SymbolTable.hpp"
 
 #define _DEF_TOKENS \
    _MK_ENUM(NONE,"<NONE>") \
@@ -194,7 +70,7 @@ private:
 class Lexer : public gc
 {
   const gc_char * m_fileName;
-  SymbolMap & m_symbolMap;
+  SymbolTable & m_symbolTable;
   AbstractErrorReporter * m_errors;
 
   /**
@@ -241,9 +117,9 @@ class Lexer : public gc
   static const int32_t U_PARA_SEP = 0x2029;
 
 public:
-  Lexer ( FastCharInput & in, const gc_char * fileName, SymbolMap & symbolMap, AbstractErrorReporter & errors );
+  Lexer ( FastCharInput & in, const gc_char * fileName, SymbolTable & symbolTable, AbstractErrorReporter & errors );
 
-  SymbolMap & symbolMap () { return m_symbolMap; }
+  SymbolTable & symbolTable () { return m_symbolTable; }
   AbstractErrorReporter & errorReporter () { return *m_errors; }
 
   Token::Enum nextToken ()

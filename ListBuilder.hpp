@@ -16,37 +16,37 @@
 */
 
 
-#include "TestSymbolMap.hpp"
-#include "../lexer.hpp"
+#ifndef LISTBUILDER_HPP
+#define	LISTBUILDER_HPP
 
-CPPUNIT_TEST_SUITE_REGISTRATION ( TestSymbolMap );
+#include "Syntax.hpp"
 
-TestSymbolMap::TestSymbolMap ( )
+class ListBuilder
 {
-}
+  SyntaxPair * m_first, * m_last;
+  SourceCoords m_coords;
+  bool m_haveCoords;
+public:
+  ListBuilder ();
 
-TestSymbolMap::~TestSymbolMap ( )
-{
-}
+  ListBuilder & operator<< ( Syntax * d );
 
-void TestSymbolMap::setUp ( )
-{
-}
+  ListBuilder & operator<< ( const SourceCoords & coords )
+  {
+    if (!m_haveCoords)
+    {
+      m_coords = coords;
+      m_haveCoords = true;
+    }
+    return * this;
+  }
 
-void TestSymbolMap::tearDown ( )
-{
-}
+  SyntaxPair * toList ();
 
-void TestSymbolMap::testMethod ( )
-{
-  SymbolMap sm;
-  Symbol * t1 = sm.newSymbol( "aaa" );
-  Symbol * t2 = sm.newSymbol( "bbb ");
-  Symbol * t3 = sm.newSymbol( "aaa" );
-  Symbol * t4 = sm.newSymbol( (std::string("aa")+"a").c_str() );
-  
-  CPPUNIT_ASSERT( t1 != t2 );
-  CPPUNIT_ASSERT( t1 == t3 );
-  CPPUNIT_ASSERT( t1 == t4 );
-}
+  SyntaxPair * toList ( Syntax * cdr );
+
+  operator SyntaxPair * () { return toList(); };
+};
+
+#endif	/* LISTBUILDER_HPP */
 
