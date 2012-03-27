@@ -51,6 +51,11 @@ void AbstractErrorReporter::errorFormat ( const SourceCoords & coords, const gc_
 {
   std::va_list ap;
   va_start( ap, message );
-  error( coords, vformatGCStr( message, ap ) );
+  verrorFormat( coords, message, ap );
   va_end( ap );
+}
+
+void AbstractErrorReporter::verrorFormat ( const SourceCoords & coords, const gc_char * message, std::va_list ap )
+{
+  error( coords, vformatGCStr( message, ap ) );
 }

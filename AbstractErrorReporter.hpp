@@ -57,6 +57,7 @@ class AbstractErrorReporter
 public:
   virtual void error ( const SourceCoords & coords, const gc_char * message ) = 0;
 
+  void verrorFormat ( const SourceCoords & coords, const gc_char * message, std::va_list ap );
   void errorFormat ( const SourceCoords & coords, const gc_char * message, ... );
 };
 
