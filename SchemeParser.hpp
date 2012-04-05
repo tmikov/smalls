@@ -59,7 +59,7 @@ public:
   ReservedBindings ( SymbolTable & map, Scope * scope );
 
 private:
-  static Binding * bind ( Scope * scope, Symbol * sym, SymCode::Enum resCode );
+  static Binding * bind ( Scope * scope, Symbol * sym, ResWord::Enum resCode );
 };
 
 class SchemeParser : public gc

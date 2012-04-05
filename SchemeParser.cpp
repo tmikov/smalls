@@ -25,37 +25,38 @@
 ReservedBindings::ReservedBindings ( SymbolTable & map, Scope * sc ) :
   scope( sc ),
   sym( map ),
-  bind_quote             ( bind( scope, sym.sym_quote, SymCode::QUOTE ) ),
-  bind_quasiquote        ( bind( scope, sym.sym_quasiquote, SymCode::NONE /*SymCode::QUASIQUOTE*/ ) ),
-  bind_unquote           ( bind( scope, sym.sym_unquote, SymCode::NONE /*SymCode::UNQUOTE*/ ) ),
-  bind_unquote_splicing  ( bind( scope, sym.sym_unquote_splicing, SymCode::NONE /*SymCode::UNQUOTE_SPLICING*/ ) ),
-  bind_syntax            ( bind( scope, sym.sym_syntax, SymCode::SYNTAX ) ),
-  bind_quasisyntax       ( bind( scope, sym.sym_quasisyntax, SymCode::QUASISYNTAX ) ),
-  bind_unsyntax          ( bind( scope, sym.sym_unsyntax, SymCode::UNSYNTAX ) ),
-  bind_unsyntax_splicing ( bind( scope, sym.sym_unsyntax_splicing, SymCode::UNSYNTAX_SPLICING ) ),
+  bind_quote             ( bind( scope, sym.sym_quote, ResWord::QUOTE ) ),
+  bind_quasiquote        ( bind( scope, sym.sym_quasiquote, ResWord::NONE /*SymCode::QUASIQUOTE*/ ) ),
+  bind_unquote           ( bind( scope, sym.sym_unquote, ResWord::NONE /*SymCode::UNQUOTE*/ ) ),
+  bind_unquote_splicing  ( bind( scope, sym.sym_unquote_splicing, ResWord::NONE /*SymCode::UNQUOTE_SPLICING*/ ) ),
+  bind_syntax            ( bind( scope, sym.sym_syntax, ResWord::SYNTAX ) ),
+  bind_quasisyntax       ( bind( scope, sym.sym_quasisyntax, ResWord::QUASISYNTAX ) ),
+  bind_unsyntax          ( bind( scope, sym.sym_unsyntax, ResWord::UNSYNTAX ) ),
+  bind_unsyntax_splicing ( bind( scope, sym.sym_unsyntax_splicing, ResWord::UNSYNTAX_SPLICING ) ),
 
-  bind_if                ( bind( scope, sym.sym_if, SymCode::IF ) ),
-  bind_begin             ( bind( scope, sym.sym_begin, SymCode::BEGIN ) ),
-  bind_lambda            ( bind( scope, sym.sym_lambda, SymCode::LAMBDA ) ),
-  bind_define            ( bind( scope, sym.sym_define, SymCode::DEFINE ) ),
-  bind_setbang           ( bind( scope, sym.sym_setbang, SymCode::SETBANG ) ),
-  bind_let               ( bind( scope, sym.sym_let, SymCode::LET ) ),
-  bind_letrec            ( bind( scope, sym.sym_letrec, SymCode::LETREC ) ),
-  bind_letrec_star       ( bind( scope, sym.sym_letrec_star, SymCode::LETREC_STAR ) ),
+  bind_if                ( bind( scope, sym.sym_if, ResWord::IF ) ),
+  bind_begin             ( bind( scope, sym.sym_begin, ResWord::BEGIN ) ),
+  bind_lambda            ( bind( scope, sym.sym_lambda, ResWord::LAMBDA ) ),
+  bind_define            ( bind( scope, sym.sym_define, ResWord::DEFINE ) ),
+  bind_setbang           ( bind( scope, sym.sym_setbang, ResWord::SETBANG ) ),
+  bind_let               ( bind( scope, sym.sym_let, ResWord::LET ) ),
+  bind_letrec            ( bind( scope, sym.sym_letrec, ResWord::LETREC ) ),
+  bind_letrec_star       ( bind( scope, sym.sym_letrec_star, ResWord::LETREC_STAR ) ),
 
-  bind_builtin           ( bind( scope, sym.sym_builtin, SymCode::BUILTIN ) ),
-  bind_define_macro      ( bind( scope, sym.sym_define_macro, SymCode::DEFINE_MACRO ) ),
-  bind_define_identifier_macro ( bind( scope, sym.sym_define_identifier_macro, SymCode::DEFINE_IDENTIFIER_MACRO ) ),
-  bind_define_set_macro  ( bind( scope, sym.sym_define_set_macro, SymCode::DEFINE_SET_MACRO ) ),
-  bind_macro_env         ( bind( scope, sym.sym_macro_env, SymCode::MACRO_ENV ) )
+  bind_builtin           ( bind( scope, sym.sym_builtin, ResWord::BUILTIN ) ),
+  bind_define_macro      ( bind( scope, sym.sym_define_macro, ResWord::DEFINE_MACRO ) ),
+  bind_define_identifier_macro ( bind( scope, sym.sym_define_identifier_macro, ResWord::DEFINE_IDENTIFIER_MACRO ) ),
+  bind_define_set_macro  ( bind( scope, sym.sym_define_set_macro, ResWord::DEFINE_SET_MACRO ) ),
+  bind_macro_env         ( bind( scope, sym.sym_macro_env, ResWord::MACRO_ENV ) )
 {}
 
-Binding * ReservedBindings::bind ( Scope * scope, Symbol * sym, SymCode::Enum resCode )
+Binding * ReservedBindings::bind ( Scope * scope, Symbol * sym, ResWord::Enum resCode )
 {
   Binding * res;
   if (scope->bind( res, sym ))
   {
-    res->resCode = resCode;
+    res->btype = BindingType::RESWORD;
+    res->u.resWord = resCode;
     return res;
   }
   else
@@ -185,16 +186,18 @@ void SchemeParser::processBodyForm ( Syntax * datum )
   else if (car->sclass == SyntaxClass::BINDING)
     binding = static_cast<SyntaxValue*>(car)->u.bnd;
 
-  if (binding == m_rsv.bind_begin)
+  if (binding && binding->btype == BindingType::RESWORD)
   {
-    // splice the body of (begin ...)
-    parseBody( pair->cdr );
-    return;
-  }
-  else if (binding == m_rsv.bind_define)
-  {
-    recordDefine( pair );
-    return;
+    switch (binding->u.resWord)
+    {
+    case ResWord::BEGIN:
+      // splice the body of (begin ...)
+      parseBody( pair->cdr );
+      return;
+    case ResWord::DEFINE:
+      recordDefine( pair );
+      return;
+    }
   }
 
   // Defer the expression

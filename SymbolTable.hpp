@@ -25,7 +25,7 @@
 
 #include "base.hpp"
 
-#define _DEF_SYMCODES \
+#define _DEF_RESWORDS \
   _MK_ENUM(NONE) \
   _MK_ENUM(QUOTE) \
 /* Handled by a macro \
@@ -53,12 +53,12 @@
   _MK_ENUM(DEFINE_SET_MACRO) \
   _MK_ENUM(MACRO_ENV)
 
-struct SymCode
+struct ResWord
 {
   #define _MK_ENUM(x)  x,
   enum Enum
   {
-    _DEF_SYMCODES
+    _DEF_RESWORDS
   };
   #undef _MK_ENUM
 
@@ -72,10 +72,11 @@ class Symbol;
 class Scope;
 class SymbolTable;
 
-struct Scope : public gc
+class Scope : public gc
 {
-  Scope ( SymbolTable * symbolTable, Scope * parent )
-    : m_symbolTable(symbolTable), m_parent( parent ), m_level(parent?parent->m_level+1:0)
+public:
+  Scope ( SymbolTable * symbolTable, Scope * parent_ )
+    : m_symbolTable(symbolTable), parent( parent_ ), level(parent?parent->level+1:0)
   {
     m_bindingList = NULL;
   }
@@ -93,27 +94,60 @@ struct Scope : public gc
 
   void popBindings ();
 
+public:
+  Scope * const parent;
+  int const level;
+
+private:
   SymbolTable * const m_symbolTable;
-  Scope * const m_parent;
-  int const m_level;
   Binding * m_bindingList; //< linking Binding::prevInScope
 };
 
-struct Binding : public gc
+#define _DEF_BIND_TYPES \
+  _MK_ENUM(NONE) \
+  _MK_ENUM(RESWORD) \
+  _MK_ENUM(VAR)
+
+struct BindingType
 {
+  #define _MK_ENUM(x)  x,
+  enum Enum
+  {
+    _DEF_BIND_TYPES
+  };
+  #undef _MK_ENUM
+
+  static const char * name ( Enum x )  { return s_names[x]; }
+private:
+  static const char * s_names[];
+};
+
+
+class Binding : public gc
+{
+public:
   Binding ( Symbol * sym_, Scope * scope_ )
     : sym(sym_), scope(scope_)
   {
-    prev = NULL;
-    resCode = SymCode::NONE;
+    this->prev = NULL;
+    this->btype = BindingType::NONE;
   }
 
   Symbol * const sym;
-  SymCode::Enum resCode;
-
   Scope * const scope;
+
+  BindingType::Enum btype;
+  union
+  {
+    ResWord::Enum resWord;
+  } u;
+
+private:
   Binding * prev; //< the same symbol in the previous scope
   Binding * prevInScope; //< link to the prev binding in our scope
+
+  friend class Scope;
+  friend class Symbol;
 };
 
 inline void Scope::addToBindingList ( Binding * bnd )

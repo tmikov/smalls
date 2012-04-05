@@ -21,9 +21,16 @@
 #include "SymbolTable.hpp"
 
 #define _MK_ENUM(x) #x,
-const char * SymCode::s_names[] =
+const char * ResWord::s_names[] =
 {
-  _DEF_SYMCODES
+  _DEF_RESWORDS
+};
+#undef _MK_ENUM
+
+#define _MK_ENUM(x) #x,
+const char * BindingType::s_names[] =
+{
+  _DEF_BIND_TYPES
 };
 #undef _MK_ENUM
 
@@ -49,14 +56,14 @@ Binding * Scope::lookupOnlyHere ( Symbol * sym )
   if (sym == NULL)
     return NULL;
 
-  int const ourLevel = m_level;
+  int const ourLevel = level;
 
   for ( Binding * bind = sym->top; bind != NULL; bind = bind->prev )
   {
     Scope * const scope = bind->scope;
     if (scope == this)
       return bind;
-    if (scope->m_level <= ourLevel)
+    if (scope->level <= ourLevel)
       break;
   }
   return NULL;
@@ -99,6 +106,6 @@ Scope * SymbolTable::newScope ()
 void SymbolTable::popScope ()
 {
   m_topScope->popBindings();
-  m_topScope = m_topScope->m_parent;
+  m_topScope = m_topScope->parent;
 }
 
