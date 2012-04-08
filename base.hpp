@@ -70,6 +70,9 @@
   #define unlikely( x )  x
 #endif
 
+#define container_of( pointer, type, field ) \
+  ({ const __typeof( ((type *)0)->field ) *__fptr = (pointer); \
+     (type *)( (char *)__fptr - offsetof(type,field) ); })
 
 typedef std::basic_string<char,std::char_traits<char>, gc_allocator<char> > gc_string;
 
@@ -84,6 +87,7 @@ std::string formatStr ( const char * message, ... );
 const gc_char * vformatGCStr ( const char * message, std::va_list ap );
 const gc_char * formatGCStr ( const char * message, ... );
 
+#define AUTO_DECL( name, value )  __typeof(value) name = (value)
 
 #endif	/* BASE_HPP */
 
