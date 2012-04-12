@@ -15,26 +15,31 @@
    limitations under the License.
 */
 
-#include "AbstractErrorReporter.hpp"
 
-std::string ErrorInfo::formatMessage() const
-{
-  std::string res = coords.toString();
-  if (!res.empty())
-    res += ':';
-  res += message;
-  return res;
-}
+#ifndef SOURCECOORDS_HPP
+#define	SOURCECOORDS_HPP
 
-void AbstractErrorReporter::errorFormat ( const SourceCoords & coords, const gc_char * message, ... )
-{
-  std::va_list ap;
-  va_start( ap, message );
-  verrorFormat( coords, message, ap );
-  va_end( ap );
-}
+#include "base.hpp"
 
-void AbstractErrorReporter::verrorFormat ( const SourceCoords & coords, const gc_char * message, std::va_list ap )
+class SourceCoords
 {
-  error( coords, vformatGCStr( message, ap ) );
-}
+public:
+  const gc_char * fileName;
+  unsigned short line, column;
+
+  SourceCoords () : fileName( NULL ), line(0), column(0) {};
+
+  SourceCoords ( const gc_char * fileName_, unsigned line_, unsigned column_ )
+    : fileName( fileName_ ), line( line_ ), column( column_ )
+  {};
+
+  bool operator == ( const SourceCoords & x ) const
+  {
+    return fileName == fileName && line == x.line && column == x.column;
+  }
+
+  std::string toString () const;
+};
+
+#endif	/* SOURCECOORDS_HPP */
+

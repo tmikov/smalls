@@ -24,6 +24,7 @@
 #include <boost/unordered_map.hpp>
 
 #include "base.hpp"
+#include "SourceCoords.hpp"
 
 #define _DEF_RESWORDS \
   _MK_ENUM(NONE) \
@@ -51,7 +52,9 @@
   _MK_ENUM(DEFINE_MACRO) \
   _MK_ENUM(DEFINE_IDENTIFIER_MACRO) \
   _MK_ENUM(DEFINE_SET_MACRO) \
-  _MK_ENUM(MACRO_ENV)
+  _MK_ENUM(MACRO_ENV) \
+  \
+  _MK_ENUM(UNSPECIFIED)
 
 struct ResWord
 {
@@ -72,37 +75,6 @@ class Symbol;
 class Scope;
 class SymbolTable;
 
-class Scope : public gc
-{
-public:
-  Scope ( SymbolTable * symbolTable, Scope * parent_ )
-    : m_symbolTable(symbolTable), parent( parent_ ), level(parent?parent->level+1:0)
-  {
-    m_bindingList = NULL;
-  }
-
-  /**
-    *
-    * @param res
-    * @param sym
-    * @return true if a new symbol was defined, false if it was already present in the scope
-    */
-  bool bind ( Binding * & res, Symbol * sym );
-  Binding * lookupOnlyHere ( Symbol * sym );
-
-  void addToBindingList ( Binding * bnd );
-
-  void popBindings ();
-
-public:
-  Scope * const parent;
-  int const level;
-
-private:
-  SymbolTable * const m_symbolTable;
-  Binding * m_bindingList; //< linking Binding::prevInScope
-};
-
 #define _DEF_BIND_TYPES \
   _MK_ENUM(NONE) \
   _MK_ENUM(RESWORD) \
@@ -122,24 +94,58 @@ private:
   static const char * s_names[];
 };
 
+class Scope : public gc
+{
+public:
+  Scope ( SymbolTable * symbolTable, Scope * parent_ )
+    : m_symbolTable(symbolTable), parent( parent_ ), level(parent?parent->level+1:-1)
+  {
+    m_bindingList = NULL;
+  }
+
+  /**
+    *
+    * @param res
+    * @param sym
+    * @return true if a new symbol was defined, false if it was already present in the scope
+    */
+  bool bind ( Binding * & res, Symbol * sym, BindingType::Enum btype, const SourceCoords & defCoords );
+  Binding * lookupOnlyHere ( Symbol * sym );
+
+  void addToBindingList ( Binding * bnd );
+
+public:
+  Scope * const parent;
+  int const level;
+
+private:
+  SymbolTable * const m_symbolTable;
+  Binding * m_bindingList; //< linking Binding::prevInScope
+
+  void popBindings ();
+
+  friend class SymbolTable;
+};
+
 
 class Binding : public gc
 {
 public:
-  Binding ( Symbol * sym_, Scope * scope_ )
-    : sym(sym_), scope(scope_)
+  Binding ( Symbol * sym_, Scope * scope_, BindingType::Enum btype_, const SourceCoords & defCoords_ )
+    : sym(sym_), scope(scope_), btype(btype_), defCoords(defCoords_)
   {
     this->prev = NULL;
-    this->btype = BindingType::NONE;
   }
 
   Symbol * const sym;
   Scope * const scope;
+  SourceCoords defCoords; //< coordinates of the source definition
 
-  BindingType::Enum btype;
+  const BindingType::Enum btype;
   union
   {
     ResWord::Enum resWord;
+    class Variable * var;
   } u;
 
 private:
@@ -149,6 +155,8 @@ private:
   friend class Scope;
   friend class Symbol;
 };
+
+std::ostream & operator << ( std::ostream & os, Binding & bnd );
 
 inline void Scope::addToBindingList ( Binding * bnd )
 {
@@ -198,13 +206,15 @@ public:
 
   Scope * newScope ();
 
-  void popScope ( Scope * scope )
+  void popThisScope ( Scope * scope )
   {
     assert( m_topScope == scope );
     popScope();
   }
 
   void popScope ();
+
+  Scope * topScope () const { return m_topScope; }
 
 private:
   struct gc_charstr_equal : public std::binary_function<const gc_char *,const gc_char *,bool>
@@ -238,6 +248,20 @@ private:
   Map m_map;
   uint32_t m_uid;
   Scope * m_topScope;
+};
+
+class ScopePopper
+{
+public:
+  ScopePopper ( SymbolTable & symbolTable, Scope * scope ) : m_symbolTable(symbolTable), m_scope(scope) {};
+
+  ~ScopePopper ()
+  {
+    m_symbolTable.popThisScope(m_scope);
+  }
+private:
+  SymbolTable & m_symbolTable;
+  Scope * m_scope;
 };
 
 #endif	/* SYMBOLTABLE_HPP */

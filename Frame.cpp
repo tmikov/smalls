@@ -15,26 +15,11 @@
    limitations under the License.
 */
 
-#include "AbstractErrorReporter.hpp"
 
-std::string ErrorInfo::formatMessage() const
-{
-  std::string res = coords.toString();
-  if (!res.empty())
-    res += ':';
-  res += message;
-  return res;
-}
+#include "Frame.hpp"
+#include "SymbolTable.hpp"
 
-void AbstractErrorReporter::errorFormat ( const SourceCoords & coords, const gc_char * message, ... )
+std::ostream & operator << ( std::ostream & os, const Variable & var )
 {
-  std::va_list ap;
-  va_start( ap, message );
-  verrorFormat( coords, message, ap );
-  va_end( ap );
-}
-
-void AbstractErrorReporter::verrorFormat ( const SourceCoords & coords, const gc_char * message, std::va_list ap )
-{
-  error( coords, vformatGCStr( message, ap ) );
+  return os << var.name << ':' << var.frame->level;
 }

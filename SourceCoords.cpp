@@ -15,26 +15,20 @@
    limitations under the License.
 */
 
-#include "AbstractErrorReporter.hpp"
 
-std::string ErrorInfo::formatMessage() const
-{
-  std::string res = coords.toString();
-  if (!res.empty())
-    res += ':';
-  res += message;
-  return res;
-}
+#include "SourceCoords.hpp"
+#include <sstream>
 
-void AbstractErrorReporter::errorFormat ( const SourceCoords & coords, const gc_char * message, ... )
+std::string SourceCoords::toString () const
 {
-  std::va_list ap;
-  va_start( ap, message );
-  verrorFormat( coords, message, ap );
-  va_end( ap );
-}
+  std::stringstream os;
 
-void AbstractErrorReporter::verrorFormat ( const SourceCoords & coords, const gc_char * message, std::va_list ap )
-{
-  error( coords, vformatGCStr( message, ap ) );
+  if (this->fileName)
+    os << this->fileName;
+  if (this->line)
+    os << '(' << this->line << ')';
+  if (this->column)
+    os << '.' << this->column;
+
+  return os.str();
 }

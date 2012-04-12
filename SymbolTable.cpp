@@ -34,7 +34,7 @@ const char * BindingType::s_names[] =
 };
 #undef _MK_ENUM
 
-bool Scope::bind ( Binding * & res, Symbol * sym )
+bool Scope::bind ( Binding * & res, Symbol * sym, BindingType::Enum btype, const SourceCoords & defCoords )
 {
   Binding * bnd;
 
@@ -44,11 +44,16 @@ bool Scope::bind ( Binding * & res, Symbol * sym )
     return false;
   }
 
-  bnd = new Binding( sym, this );
+  bnd = new Binding( sym, this, btype, defCoords );
   addToBindingList( bnd );
   sym->push( bnd );
   res = bnd;
   return true;
+}
+
+std::ostream & operator << ( std::ostream & os, Binding & bnd )
+{
+  return os << bnd.sym->name << ':' << bnd.scope->level;
 }
 
 Binding * Scope::lookupOnlyHere ( Symbol * sym )

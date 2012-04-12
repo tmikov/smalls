@@ -20,24 +20,7 @@
 #define	ABSTRACTERRORREPORTER_HPP
 
 #include "base.hpp"
-
-class SourceCoords
-{
-public:
-  const gc_char * fileName;
-  unsigned line, column;
-
-  SourceCoords () : fileName( NULL ), line(0), column(0) {};
-
-  SourceCoords ( const gc_char * fileName_, unsigned line_, unsigned column_ )
-    : fileName( fileName_ ), line( line_ ), column( column_ )
-  {};
-
-  bool operator == ( const SourceCoords & x ) const
-  {
-    return fileName == fileName && line == x.line && column == x.column;
-  }
-};
+#include "SourceCoords.hpp"
 
 class ErrorInfo : public gc
 {

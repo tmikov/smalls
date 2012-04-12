@@ -24,6 +24,7 @@
 #include "SyntaxReader.hpp"
 #include "AbstractErrorReporter.hpp"
 #include "SymbolTable.hpp"
+#include "SchemeAST.hpp"
 
 class ReservedBindings : public gc
 {
@@ -68,30 +69,79 @@ public:
   SchemeParser( SymbolTable & symbolTable, AbstractErrorReporter & errors );
   ~SchemeParser();
 
-  void parseLibraryBody ( Syntax * datum );
+  ListOfAst compileLibraryBody ( Syntax * datum );
 
 private:
+  typedef std::list<Syntax *,gc_allocator<SyntaxPair *> > DatumList;
+
+  typedef std::pair<Binding *, Syntax *> DeferredDefine;
+  typedef std::list<DeferredDefine,gc_allocator<DeferredDefine> > DeferredDefineList;
+
+  struct Context : public gc
+  {
+    Scope * scope;
+    Frame * frame;
+    DeferredDefineList defnList; //< the deferred definitions
+    DatumList exprList; //< the body expressions
+
+    Context ( Scope * scope_, Frame * frame_ ) : scope(scope_), frame(frame_) {};
+
+    bool topLevel () const { return this->scope->level == 0; };
+  };
+
   SymbolTable m_symbolTable;
+  Scope * m_systemScope;
   ReservedBindings m_rsv;
   AbstractErrorReporter & m_errors;
 
-  typedef std::list<SyntaxPair *,gc_allocator<SyntaxPair *> > PairList;
+  Binding * m_unspec;
 
-  PairList m_defnList; //< the deferred definitions
-  PairList m_exprList; //< the body expressions
+  ListOfAst compileBody ( Context * ctx, Syntax * datum );
+  void parseBody ( Context * ctx, Syntax * datum);
+  void processBodyForm ( Context * ctx, Syntax * datum );
+  void recordDefine ( Context * ctx, SyntaxPair * form );
 
-  /** A placeholder for expressions coverted to (define <unused> ...) */
-  SyntaxValue * m_unusedSymbol;
-  Syntax * m_unspec; // A datum containing the representation of #unspecified
+  ListOfAst convertLetRecStar ( Context * ctx );
 
-  void parseBody ( Syntax * datum );
-  void processBodyForm ( Syntax * datum );
-  void recordDefine ( SyntaxPair * form );
-  SyntaxPair * convertToLetrecStar ();
+  ListOfAst compileExpression ( Context * ctx, Syntax * expr );
+  ListOfAst compilePair ( Context * ctx, SyntaxPair * expr );
+  ListOfAst compileCall ( Context * ctx, SyntaxPair * call );
+  ListOfAst compileResForm ( Context * ctx, SyntaxPair * pair, Binding * bndCar );
+  ListOfAst compileBegin ( Context * ctx, SyntaxPair * beginPair );
+  ListOfAst compileSetBang ( Context * ctx, SyntaxPair * setPair );
+  ListOfAst compileIf ( Context * ctx, SyntaxPair * ifPair );
+  ListOfAst compileLambda ( Context * ctx, SyntaxPair * lambdaPair );
+  ListOfAst compileLet ( Context * ctx, SyntaxPair * letPair );
+  ListOfAst compileBasicLet ( Context * ctx, SyntaxPair * letPair );
+  ListOfAst compileNamedLet ( Context * ctx, SyntaxPair * letPair );
+  bool splitLetParams ( Syntax * p0, DatumList & varDatums, DatumList & valueDatums );
 
-  SyntaxPair * needPair ( Syntax * datum );
+  ListOfAst makeUnspecified ( Syntax * where );
+
+  bool needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp );
+
+  SyntaxPair * needPair ( const char * formName, Syntax * datum );
+  bool needNil ( const char * formName, Syntax * datum );
+  SyntaxPair * isPair ( Syntax * datum );
+  Binding * isBinding ( Syntax * datum );
+
   void error ( Syntax * datum, const char * msg, ... );
 };
+
+inline SyntaxPair * SchemeParser::isPair ( Syntax * datum )
+{
+  return datum->sclass == SyntaxClass::PAIR ? static_cast<SyntaxPair*>(datum) : NULL;
+}
+
+inline Binding * SchemeParser::isBinding ( Syntax * datum )
+{
+  if (datum->sclass == SyntaxClass::SYMBOL)
+    return m_symbolTable.lookup(static_cast<SyntaxValue*>(datum)->u.symbol);
+  else if (datum->sclass == SyntaxClass::BINDING)
+    return static_cast<SyntaxBinding*>(datum)->bnd;
+  else
+    return NULL;
+}
 
 #endif	/* SCHEMEPARSER_HPP */
 

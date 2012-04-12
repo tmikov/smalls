@@ -33,6 +33,7 @@
    _MK_ENUM(SYMBOL) \
    _MK_ENUM(BINDING) \
    _MK_ENUM(PAIR) \
+   _MK_ENUM(NIL) \
    _MK_ENUM(VECTOR)
 
 struct SyntaxClass
@@ -53,11 +54,11 @@ private:
 class Syntax : public gc
 {
 public:
-  SyntaxClass::Enum sclass;
+  SyntaxClass::Enum const sclass;
   SourceCoords coords;
   Syntax ( SyntaxClass::Enum dclass_, const SourceCoords & coords_ ) : sclass( dclass_ ), coords( coords_ ) {}
 
-  bool isNil () const;
+  bool isNil () const { return this->sclass == SyntaxClass::NIL; }
   virtual void toStream ( std::ostream & os ) const;
   virtual bool equal ( const Syntax * x ) const;
 
@@ -83,7 +84,6 @@ public:
     bool     vbool;
     const gc_char * str;
     Symbol * symbol;
-    Binding * bnd;
   } u;
 
   SyntaxValue ( SyntaxClass::Enum dclass_, const SourceCoords & coords_, double real )
@@ -96,8 +96,18 @@ public:
     : Syntax( dclass_, coords_ ) { u.str = str; }
   SyntaxValue ( SyntaxClass::Enum dclass_, const SourceCoords & coords_, Symbol * symbol )
     : Syntax( dclass_, coords_ ) { u.symbol = symbol; }
-  SyntaxValue ( SyntaxClass::Enum dclass_, const SourceCoords & coords_, Binding * bnd )
-    : Syntax( dclass_, coords_ ) { u.bnd = bnd; }
+
+  virtual void toStream ( std::ostream & os ) const;
+  virtual bool equal ( const Syntax * x ) const;
+};
+
+class SyntaxBinding : public Syntax
+{
+public:
+  Binding * bnd;
+
+  SyntaxBinding ( const SourceCoords & coords_, Binding * bnd )
+    : Syntax( SyntaxClass::BINDING, coords_ ) { this->bnd = bnd; }
 
   virtual void toStream ( std::ostream & os ) const;
   virtual bool equal ( const Syntax * x ) const;
@@ -110,24 +120,22 @@ struct SyntaxPair : public Syntax
   SyntaxPair ( const SourceCoords & coords_, Syntax * car_, Syntax * cdr_ )
     : Syntax( SyntaxClass::PAIR, coords_ ), car(car_), cdr(cdr_) {}
 
-  bool isNil () const { return this->car == NULL; }
-
   virtual void toStream ( std::ostream & os ) const;
   virtual bool equal ( const Syntax * x ) const;
+
+protected:
+  SyntaxPair ( SyntaxClass::Enum sclass, const SourceCoords & coords_, Syntax * car_, Syntax * cdr_ )
+    : Syntax( sclass, coords_ ), car(car_), cdr(cdr_) {}
 };
 
 struct SyntaxNil : public SyntaxPair
 {
   SyntaxNil ( const SourceCoords & coords )
-    : SyntaxPair( coords, NULL, NULL ) {}
+    : SyntaxPair( SyntaxClass::NIL, coords, NULL, NULL ) {}
 
   virtual bool equal ( const Syntax * x ) const;
+  virtual void toStream ( std::ostream & os ) const;
 };
-
-inline bool Syntax::isNil () const
-{
-  return this->sclass == SyntaxClass::PAIR && static_cast<const SyntaxPair*>(this)->isNil();
-}
 
 struct SyntaxVector : public Syntax
 {

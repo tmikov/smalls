@@ -45,7 +45,6 @@ void SyntaxValue::toStream ( std::ostream & os ) const
   case SyntaxClass::BOOL:    os << u.vbool; break;
   case SyntaxClass::STR:     os << "\"" << u.str << "\""; break; // FIXME: utf-8 decoding & escaping!
   case SyntaxClass::SYMBOL:  os << u.symbol->name; break;
-  case SyntaxClass::BINDING:  os << "bnd/" << u.bnd->sym->name; break;
   default:
     assert( false );
   }
@@ -66,23 +65,35 @@ bool SyntaxValue::equal ( const Syntax * x ) const
   case SyntaxClass::BOOL:    return u.vbool == p->u.vbool;
   case SyntaxClass::STR:     return std::strcmp( u.str, p->u.str) == 0;
   case SyntaxClass::SYMBOL:  return u.symbol == p->u.symbol;
-  case SyntaxClass::BINDING:  return u.bnd == p->u.bnd;
   default:
     assert( false );
     return false;
   }
 }
 
+void SyntaxBinding::toStream ( std::ostream & os ) const
+{
+  os << bnd->sym->name << ':' << bnd->scope->level;
+}
+
+bool SyntaxBinding::equal ( const Syntax * x ) const
+{
+  if (x->sclass != SyntaxClass::BINDING)
+    return false;
+  const SyntaxBinding * p = (const SyntaxBinding *)x;
+  return p->bnd == bnd;
+}
+
 void SyntaxPair::toStream ( std::ostream & os ) const
 {
   os << '(';
   const SyntaxPair * p = this;
-  while (!p->isNil())
+  for(;;)
   {
     p->car->toStream( os );
     if (p->cdr->sclass == SyntaxClass::PAIR)
     {
-      p = (const SyntaxPair *)p->cdr;
+      p = static_cast<const SyntaxPair *>(p->cdr);
       os << " ";
     }
     else
@@ -102,15 +113,17 @@ bool SyntaxPair::equal ( const Syntax * x ) const
     return false;
   const SyntaxPair * p = (const SyntaxPair *)x;
 
-  if (p->isNil())
-    return false;
-
   return car->equal( p->car ) && cdr->equal( p->cdr );
 }
 
 bool SyntaxNil::equal ( const Syntax * x ) const
 {
-  return x->sclass == SyntaxClass::PAIR && static_cast<const SyntaxPair*>(x)->isNil();
+  return x->sclass == SyntaxClass::NIL;
+}
+
+void SyntaxNil::toStream ( std::ostream & os ) const
+{
+  os << "()";
 }
 
 void SyntaxVector::toStream ( std::ostream & os ) const

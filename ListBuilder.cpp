@@ -57,7 +57,7 @@ SyntaxPair * ListBuilder::toList ( Syntax * cdr )
   }
   else
   {
-    assert( cdr->sclass == SyntaxClass::PAIR );
+    assert( cdr->sclass == SyntaxClass::PAIR || cdr->sclass == SyntaxClass::NIL );
     res = static_cast<SyntaxPair *>(cdr);
   }
   m_haveCoords = false;

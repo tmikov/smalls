@@ -163,6 +163,7 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, Token::Enum termi
     {
       if (m_lex.curToken() == terminator)
       {
+        lb << m_lex.coords();
         next();
         return lb.toList();
       }
