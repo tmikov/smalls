@@ -37,6 +37,7 @@
   _MK_ENUM(IF) \
   _MK_ENUM(CLOSURE) \
   _MK_ENUM(LET) \
+  _MK_ENUM(FIX) \
 
 
 struct AstCode
@@ -247,6 +248,43 @@ struct AstLet : public Ast
   }
 
   virtual void toStream ( std::ostream & os ) const;
+
+protected:
+  AstLet (
+    AstCode::Enum code,
+    const SourceCoords & coords_,
+    Frame * enclosingFrame,
+    VectorOfVariable * params,
+    Frame * paramFrame,
+    Frame * bodyFrame,
+    const ListOfAst & body,
+    VectorOfListOfAst * values
+  ) : Ast( code, coords_ )
+  {
+    this->enclosingFrame = enclosingFrame;
+    this->params = params;
+    this->paramFrame = paramFrame;
+    this->bodyFrame = bodyFrame;
+    this->body = body;
+    this->values = values;
+  }
+};
+
+/**
+ * A restricted form of let where the variables are unassigned (never modified), and the init
+ * expressions are all lambdas.
+ */
+struct AstFix : public AstLet
+{
+  AstFix (
+    const SourceCoords & coords_,
+    Frame * enclosingFrame,
+    VectorOfVariable * params,
+    Frame * paramFrame,
+    Frame * bodyFrame,
+    const ListOfAst & body,
+    VectorOfListOfAst * values
+  );
 };
 
 #endif	/* SCHEMEAST_HPP */

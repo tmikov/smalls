@@ -153,3 +153,31 @@ void AstLet::toStream ( std::ostream & os ) const
      << ')'
      << OStreamSetIndent(-4);
 }
+
+AstFix::AstFix (
+  const SourceCoords & coords_,
+  Frame * enclosingFrame,
+  VectorOfVariable * params,
+  Frame * paramFrame,
+  Frame * bodyFrame,
+  const ListOfAst & body,
+  VectorOfListOfAst * values
+) : AstLet(
+      AstCode::FIX,
+      coords_,
+      enclosingFrame,
+      params,
+      paramFrame,
+      bodyFrame,
+      body,
+      values
+    )
+{
+#ifndef NDEBUG
+  BOOST_FOREACH( ListOfAst & init, *values )
+  {
+    assert( !init.empty() );
+    assert( init.first()->code == AstCode::CLOSURE );
+  }
+#endif
+}
