@@ -78,7 +78,8 @@ class SymbolTable;
 #define _DEF_BIND_TYPES \
   _MK_ENUM(NONE) \
   _MK_ENUM(RESWORD) \
-  _MK_ENUM(VAR)
+  _MK_ENUM(VAR) \
+  _MK_ENUM(MACRO)
 
 struct BindingType
 {
@@ -132,6 +133,15 @@ private:
   friend class SymbolTable;
 };
 
+class Syntax;
+
+class Macro : public gc
+{
+public:
+  Scope * const scope;
+  Macro ( Scope * scope_ ) : scope(scope_) {}
+  virtual Syntax * expand ( Syntax * datum ) = 0;
+};
 
 class Binding : public gc
 {
@@ -151,6 +161,7 @@ public:
   {
     ResWord::Enum resWord;
     class Variable * var;
+    Macro * macro;
   } u;
 
 private:
