@@ -74,6 +74,20 @@ Binding * Scope::lookupOnlyHere ( Symbol * sym )
   return NULL;
 }
 
+Binding * Scope::lookupHereAndUp ( Symbol * sym )
+{
+  if (!isActive())
+    return NULL;
+  if (sym == NULL)
+    return NULL;
+
+  int const ourLevel = level;
+
+  for ( Binding * bind = sym->top; bind != NULL && bind->scope->level > ourLevel; bind = bind->prev )
+    {}
+  return NULL;
+}
+
 void Scope::popBindings()
 {
   for ( Binding * bnd = m_bindingList; bnd != NULL; bnd = bnd->prevInScope )
@@ -104,6 +118,7 @@ Symbol * SymbolTable::newSymbol ( const gc_char * name )
 Scope * SymbolTable::newScope ()
 {
   Scope * scope = new Scope( this, m_topScope );
+  scope->m_active = true;
   m_topScope = scope;
   return scope;
 }
@@ -111,6 +126,8 @@ Scope * SymbolTable::newScope ()
 void SymbolTable::popScope ()
 {
   m_topScope->popBindings();
+  assert( m_topScope->m_active );
+  m_topScope->m_active = false;
   m_topScope = m_topScope->parent;
 }
 

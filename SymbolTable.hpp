@@ -101,6 +101,7 @@ public:
     : m_symbolTable(symbolTable), parent( parent_ ), level(parent?parent->level+1:-1)
   {
     m_bindingList = NULL;
+    m_active = false;
   }
 
   /**
@@ -111,8 +112,11 @@ public:
     */
   bool bind ( Binding * & res, Symbol * sym, BindingType::Enum btype, const SourceCoords & defCoords );
   Binding * lookupOnlyHere ( Symbol * sym );
+  Binding * lookupHereAndUp ( Symbol * sym );
 
   void addToBindingList ( Binding * bnd );
+
+  bool isActive () const { return m_active; }
 
 public:
   Scope * const parent;
@@ -121,6 +125,7 @@ public:
 private:
   SymbolTable * const m_symbolTable;
   Binding * m_bindingList; //< linking Binding::prevInScope
+  bool m_active;
 
   void popBindings ();
 
