@@ -102,7 +102,7 @@ Syntax * SyntaxReader::read ( unsigned termSet )
     case Token::INTEGER: res = new SyntaxValue( SyntaxClass::INTEGER, m_lex.coords(), m_lex.valueInteger() ); next(); return res;
     case Token::REAL:    res = new SyntaxValue( SyntaxClass::REAL,    m_lex.coords(), m_lex.valueReal()    ); next(); return res;
     case Token::STR:     res = new SyntaxValue( SyntaxClass::STR,     m_lex.coords(), m_lex.valueString()  ); next(); return res;
-    case Token::SYMBOL:  res = new SyntaxValue( SyntaxClass::SYMBOL,  m_lex.coords(), m_lex.valueSymbol()  ); next(); return res;
+    case Token::SYMBOL:  res = new SyntaxSymbol( m_lex.coords(), m_lex.valueSymbol()  ); next(); return res;
 
     case Token::LPAR:
       { SourceCoords coords=m_lex.coords(); next(); return list( coords, Token::RPAR, termSet ); }

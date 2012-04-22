@@ -1,0 +1,6 @@
+(define +)
+(define a 10)
+(define tmp 20)
+(define if)
+(define let)
+(or 10 tmp)

@@ -1,5 +1,7 @@
 env = Environment()
 
+#env.Replace( CXX='clang' )
+
 if ARGUMENTS.get('debug',0):
   env.Append(CCFLAGS=['-g'])
 else:

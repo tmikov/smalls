@@ -83,9 +83,10 @@ Binding * Scope::lookupHereAndUp ( Symbol * sym )
 
   int const ourLevel = level;
 
-  for ( Binding * bind = sym->top; bind != NULL && bind->scope->level > ourLevel; bind = bind->prev )
+  Binding * bind;
+  for ( bind = sym->top; bind != NULL && bind->scope->level > ourLevel; bind = bind->prev )
     {}
-  return NULL;
+  return bind;
 }
 
 void Scope::popBindings()
@@ -98,6 +99,7 @@ SymbolTable::SymbolTable ()
 {
   m_uid = 0;
   m_topScope = NULL;
+  m_markStamp = 0;
 }
 
 SymbolTable::~SymbolTable ( )
@@ -111,6 +113,23 @@ Symbol * SymbolTable::newSymbol ( const gc_char * name )
     return it->second;
   Symbol * sym = new Symbol( name, m_uid );
   m_map[name] = sym;
+  ++m_uid;
+  return sym;
+}
+
+Symbol * SymbolTable::newSymbol ( Symbol * parentSymbol, uint32_t markStamp )
+{
+  assert( markStamp != 0 );
+  if (markStamp == 0)
+    return parentSymbol;
+
+  MarkKey mk( markStamp, parentSymbol->uid );
+  MarkMap::iterator it;
+  if ( (it = m_markMap.find( mk )) != m_markMap.end())
+    return it->second;
+
+  Symbol * sym = new Symbol( parentSymbol->name, m_uid, parentSymbol, markStamp );
+  m_markMap[mk] = sym;
   ++m_uid;
   return sym;
 }

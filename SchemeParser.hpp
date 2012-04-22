@@ -89,22 +89,24 @@ private:
     bool topLevel () const { return this->scope->level == 0; };
   };
 
-  SymbolTable m_symbolTable;
+  SymbolTable & m_symbolTable;
   Scope * m_systemScope;
   ReservedBindings m_rsv;
   AbstractErrorReporter & m_errors;
 
   Binding * m_unspec;
+  Mark * const m_antiMark;
 
   ListOfAst compileBody ( Context * ctx, Syntax * datum );
   void parseBody ( Context * ctx, Syntax * datum);
   void processBodyForm ( Context * ctx, Syntax * datum );
   void recordDefine ( Context * ctx, SyntaxPair * form );
 
+  Syntax * expandMacro ( Context * ctx, Macro * macro, SyntaxPair * pair );
+
   ListOfAst convertLetRecStar ( Context * ctx );
 
   ListOfAst compileExpression ( Context * ctx, Syntax * expr );
-  ListOfAst compilePair ( Context * ctx, SyntaxPair * expr );
   ListOfAst compileCall ( Context * ctx, SyntaxPair * call );
   ListOfAst compileResForm ( Context * ctx, SyntaxPair * pair, Binding * bndCar );
   ListOfAst compileBegin ( Context * ctx, SyntaxPair * beginPair );
@@ -119,6 +121,9 @@ private:
   ListOfAst makeUnspecified ( Syntax * where );
 
   bool needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp );
+
+  bool bindSyntaxSymbol ( Binding * & res, Scope * scope, SyntaxSymbol * ss, BindingType::Enum btype );
+  Binding * lookupSyntaxSymbol ( SyntaxSymbol * ss );
 
   SyntaxPair * needPair ( const char * formName, Syntax * datum );
   bool needNil ( const char * formName, Syntax * datum );
@@ -136,7 +141,7 @@ inline SyntaxPair * SchemeParser::isPair ( Syntax * datum )
 inline Binding * SchemeParser::isBinding ( Syntax * datum )
 {
   if (datum->sclass == SyntaxClass::SYMBOL)
-    return m_symbolTable.lookup(static_cast<SyntaxValue*>(datum)->u.symbol);
+    return lookupSyntaxSymbol(static_cast<SyntaxSymbol*>(datum));
   else if (datum->sclass == SyntaxClass::BINDING)
     return static_cast<SyntaxBinding*>(datum)->bnd;
   else

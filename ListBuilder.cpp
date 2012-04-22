@@ -32,7 +32,7 @@ ListBuilder & ListBuilder::operator<< ( Syntax * value )
   if (m_first == NULL)
     m_first = d;
   else
-    m_last->cdr = d;
+    m_last->setCdr( d );
   m_last = d;
 
   return *this;
@@ -51,7 +51,7 @@ SyntaxPair * ListBuilder::toList ( Syntax * cdr )
   SyntaxPair * res;
   if (m_last != NULL)
   {
-    m_last->cdr = cdr;
+    m_last->setCdr( cdr );
     res = m_first;
     m_first = m_last = NULL;
   }

@@ -16,8 +16,56 @@
 */
 
 
+#include <boost/smart_ptr/scoped_array.hpp>
+
 #include "Syntax.hpp"
 #include "SymbolTable.hpp"
+
+bool Mark::equal ( const Mark * m ) const
+{
+  if (m == this)
+    return true;
+  if (!m)
+    return false;
+  if (this->value != m->value)
+    return false;
+  if (this->next)
+    return this->next->equal( m->next );
+  return !m->next;
+}
+
+void Mark::toStream ( std::ostream & os ) const
+{
+  os << "Mark:" << this->value;
+  for ( const Mark * n = this->next; n; n = n->next )
+  if (this->next)
+    os << "," << n->value;
+}
+
+Mark * concat ( Mark * first, Mark * second )
+{
+  if (!first)
+    return second;
+  if (!second)
+    return first;
+
+  Mark * next = concat( first->next, second );
+
+  if (first->isMark() && next->isAntiMark()) // mark before anti-mark cancel each other
+    return next->next;
+  if (next != first->next)                 // did we change?
+    return new Mark( first->value, first->scope, next );
+  else
+    return first;
+}
+
+bool equal ( const Mark * a, const Mark * b )
+{
+  if (a)
+    return a->equal( b );
+  return !b;
+}
+
 
 #define _MK_ENUM(x) #x,
 const char * SyntaxClass::s_names[] =
@@ -25,6 +73,55 @@ const char * SyntaxClass::s_names[] =
   _DEF_SYNTAX_CLASSES
 };
 #undef _MK_ENUM
+
+Syntax * Syntax::wrap ( Mark * mark )
+{
+  return this;
+}
+
+Syntax * unwrapCompletely ( Syntax * d, Mark * mark )
+{
+  switch (d->sclass)
+  {
+  case SyntaxClass::PAIR:
+    {
+      SyntaxPair * p = static_cast<SyntaxPair*>(d);
+      Mark * newMark = concat(mark,p->mark);
+      Syntax * car = unwrapCompletely( p->m_car, newMark );
+      Syntax * cdr = unwrapCompletely( p->m_cdr, newMark );
+      if (car != p->m_car || cdr != p->m_cdr || p->mark != NULL)
+        d = new SyntaxPair( p->coords, car, cdr, NULL );
+    }
+    break;
+
+  case SyntaxClass::VECTOR:
+    {
+      SyntaxVector * v = static_cast<SyntaxVector*>(d);
+      Mark * newMark = concat(mark,v->mark);
+      Syntax ** data = NULL;
+      for ( unsigned i = 0; i != v->len; ++i )
+      {
+        Syntax * tmp = unwrapCompletely( v->m_data[i], newMark );
+        if (tmp != v->m_data[i] && !data)
+        {
+          data = new (GC) Syntax*[v->len];
+          std::memcpy( data, v->m_data, sizeof(data[0])*i );
+        }
+        if (data)
+          data[i] = tmp;
+      }
+      if (data || v->mark != NULL)
+        d = new SyntaxVector( v->coords, data, v->len, NULL );
+    }
+    break;
+
+  default:
+    d = d->wrap(mark);
+    break;
+  }
+  return d;
+}
+
 
 void Syntax::toStream ( std::ostream & os ) const
 {
@@ -44,7 +141,6 @@ void SyntaxValue::toStream ( std::ostream & os ) const
   case SyntaxClass::INTEGER: os << u.integer; break;
   case SyntaxClass::BOOL:    os << u.vbool; break;
   case SyntaxClass::STR:     os << "\"" << u.str << "\""; break; // FIXME: utf-8 decoding & escaping!
-  case SyntaxClass::SYMBOL:  os << u.symbol->name; break;
   default:
     assert( false );
   }
@@ -64,11 +160,47 @@ bool SyntaxValue::equal ( const Syntax * x ) const
   case SyntaxClass::INTEGER: return u.integer == p->u.integer;
   case SyntaxClass::BOOL:    return u.vbool == p->u.vbool;
   case SyntaxClass::STR:     return std::strcmp( u.str, p->u.str) == 0;
-  case SyntaxClass::SYMBOL:  return u.symbol == p->u.symbol;
   default:
     assert( false );
     return false;
   }
+}
+
+/** Create the chain of marked symbols in the symbol table */
+static Symbol * wrapSymbol ( Mark * mark, Symbol * symbol )
+{
+  Symbol * parentSymbol = mark->next ? wrapSymbol( mark->next, symbol ) : symbol;
+  if (mark->isAntiMark())
+    return parentSymbol;
+  return mark->scope->m_symbolTable->newSymbol( parentSymbol, mark->value );
+}
+
+Syntax * SyntaxSymbol::wrap ( Mark * mark )
+{
+  if (!mark)
+    return this;
+  Mark * newMark = concat( mark, this->mark );
+  return
+    new SyntaxSymbol( this->coords, newMark ? wrapSymbol(newMark, this->symbol) : this->symbol, newMark );
+}
+
+void SyntaxSymbol::toStream ( std::ostream & os ) const
+{
+  os << this->symbol->name;
+  if (this->symbol->markStamp)
+    os << '@' << this->symbol->uid;
+  if (this->mark)
+    os << "{" << *this->mark << '}';
+}
+
+bool SyntaxSymbol::equal ( const Syntax * x ) const
+{
+  if (x == this)
+    return true;
+  if (SyntaxClass::SYMBOL != x->sclass)
+    return false;
+  const SyntaxSymbol * p = (const SyntaxSymbol *)x;
+  return this->symbol == p->symbol && ::equal(this->mark, p->mark);
 }
 
 void SyntaxBinding::toStream ( std::ostream & os ) const
@@ -84,21 +216,50 @@ bool SyntaxBinding::equal ( const Syntax * x ) const
   return p->bnd == bnd;
 }
 
+Syntax* SyntaxPair::car() const
+{
+  if (!this->mark)
+    return m_car;
+  if (m_wrappedCar)
+    return m_wrappedCar;
+  return m_wrappedCar = m_car->wrap( this->mark );
+}
+
+Syntax* SyntaxPair::cdr() const
+{
+  if (!this->mark)
+    return m_cdr;
+  if (m_wrappedCdr)
+    return m_wrappedCdr;
+  return m_wrappedCdr = m_cdr->wrap( this->mark );
+}
+
+Syntax * SyntaxPair::wrap ( Mark * mark )
+{
+  return mark ? new SyntaxPair( this->coords, m_car, m_cdr, concat(mark,this->mark) ) : this;
+}
+
 void SyntaxPair::toStream ( std::ostream & os ) const
 {
   os << '(';
+  if (this->mark)
+    os << "{" << *this->mark << '}';
   const SyntaxPair * p = this;
   for(;;)
   {
-    p->car->toStream( os );
-    if (p->cdr->sclass == SyntaxClass::PAIR)
+    p->m_car->toStream( os );
+    if (p->m_cdr->isNil())
     {
-      p = static_cast<const SyntaxPair *>(p->cdr);
+      break;
+    }
+    else if (p->m_cdr->sclass == SyntaxClass::PAIR)
+    {
+      p = static_cast<const SyntaxPair *>(p->m_cdr);
       os << " ";
     }
     else
     {
-      os << " . " << *p->cdr;
+      os << " . " << *p->m_cdr;
       break;
     }
   }
@@ -113,7 +274,12 @@ bool SyntaxPair::equal ( const Syntax * x ) const
     return false;
   const SyntaxPair * p = (const SyntaxPair *)x;
 
-  return car->equal( p->car ) && cdr->equal( p->cdr );
+  return ::equal(this->mark, p->mark) && m_car->equal( p->m_car ) && m_cdr->equal( p->m_cdr );
+}
+
+Syntax * SyntaxNil::wrap ( Mark * mark )
+{
+  return this;
 }
 
 bool SyntaxNil::equal ( const Syntax * x ) const
@@ -126,15 +292,45 @@ void SyntaxNil::toStream ( std::ostream & os ) const
   os << "()";
 }
 
+Syntax * SyntaxVector::wrap ( Mark * mark )
+{
+  return mark ? new SyntaxVector( this->coords, m_data, this->len, concat(mark,this->mark) ) : this;
+}
+
+Syntax* SyntaxVector::getElement( unsigned i ) const
+{
+  if (!this->mark)
+    return m_data[i];
+
+  Syntax * wrappedElem;
+
+  if (!m_wrappedData)
+  {
+    wrappedElem = m_data[i]->wrap(this->mark);
+    if (wrappedElem == m_data[i]) // avoid allocating if the element is the same
+      return wrappedElem;
+
+    m_wrappedData = new (GC) Syntax*[this->len];
+    std::memset( m_wrappedData, 0, sizeof(m_wrappedData[0])*this->len );
+  }
+  else
+    wrappedElem = m_data[i]->wrap(this->mark);
+
+  return m_wrappedData[i] = wrappedElem;
+}
+
+
 void SyntaxVector::toStream ( std::ostream & os ) const
 {
   os << "#(";
+  if (this->mark)
+    os << "{" << *this->mark << '}';
 
   for ( unsigned i = 0; i != len; ++i )
   {
     if (i != 0)
       os << " ";
-    os << *data[i];
+    os << *m_data[i];
   }
   os << ")";
 }
@@ -146,10 +342,12 @@ bool SyntaxVector::equal ( const Syntax * x ) const
   if (sclass != x->sclass)
     return false;
   const SyntaxVector * v = (const SyntaxVector *)x;
+  if (!::equal(this->mark, v->mark))
+    return false;
   if (len != v->len)
     return false;
   for ( unsigned i = 0; i != len; ++i )
-    if (!data[i]->equal( v->data[i]))
+    if (!m_data[i]->equal( v->m_data[i]))
       return false;
   return true;
 }
@@ -167,7 +365,7 @@ void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax
     {
       if (i > 0)
         os << ' ';
-      toStreamIndented( os, indent, vec->data[i] );
+      toStreamIndented( os, indent, vec->m_data[i] );
     }
     os << ')';
   }
@@ -185,19 +383,19 @@ void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax
           os << ' ';
       }
 
-      toStreamIndented( os, indent, p->car);
-      if (p->cdr->isNil())
+      toStreamIndented( os, indent, p->m_car);
+      if (p->m_cdr->isNil())
         break;
 
-      if (p->cdr->sclass == SyntaxClass::PAIR)
+      if (p->m_cdr->sclass == SyntaxClass::PAIR)
       {
-        p = (const SyntaxPair *) p->cdr;
+        p = (const SyntaxPair *) p->m_cdr;
         os << ' ';
       }
       else
       {
         os << " . ";
-        toStreamIndented( os, indent, p->cdr );
+        toStreamIndented( os, indent, p->m_cdr );
         break;
       }
     }
@@ -207,4 +405,3 @@ void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax
   else
     os << *datum;
 }
-
