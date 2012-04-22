@@ -111,96 +111,6 @@ void SchemeParser::parseBody ( SchemeParser::Context * ctx, Syntax * datum )
   }
 }
 
-
-ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
-{
-  if (ctx->defnList.empty())
-  {
-    ListOfAst body;
-
-    BOOST_FOREACH( Syntax * expr, ctx->exprList )
-    {
-      ListOfAst tmp = compileExpression( ctx, expr );
-      body.destructiveAppend( tmp );
-    }
-
-    if (body.empty())
-      body += new Ast(AstCode::UNSPECIFIED, SourceCoords());
-
-    return body;
-  }
-  else
-  {
-  /*
-  Trivial conversion to let.
-
-    (define-syntax letrec*
-      (syntax-rules ()
-        ((letrec* ((var1 init1) ...) body1 body2 ...)
-          (let ((var1 <undefined>) ...)
-            (set! var1 init1)
-            ...
-            (let () body1 body2 ...)))))
-  */
-
-    // Note that we don't generate the inner "(let () body1 body2 ...)" because we know
-    // for sure that it isn't necessary in our case (not general letrec*, but generating the body;
-    // we know there are no definitions in the body).
-
-    VectorOfVariable * vars = new (GC) VectorOfVariable();
-    VectorOfListOfAst * values = new (GC) VectorOfListOfAst();
-    Frame * paramFrame = ctx->frame;
-
-    // Build the let initialization
-    BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
-    {
-      if (defn.first)
-        vars->push_back( defn.first->u.var );
-      else
-        vars->push_back( ctx->frame->newAnonymous("") );
-      values->push_back( makeUnspecified(defn.second) );
-    }
-
-    // Create a dummy body frame
-    ctx->frame = new Frame(ctx->frame);
-
-    ListOfAst body;
-    VectorOfVariable::const_iterator vit = vars->begin();
-    DeferredDefineList::const_iterator dit = ctx->defnList.begin();
-    DeferredDefineList::const_iterator dit_end = ctx->defnList.end();
-    for ( ; dit != dit_end; ++vit, ++dit )
-    {
-      const DeferredDefine & defn = *dit;
-      Variable * var = *vit;
-
-      body += new AstSet( defn.second->coords, var, compileExpression( ctx, defn.second ) );
-    }
-
-    BOOST_FOREACH( Syntax * expr, ctx->exprList )
-    {
-      ListOfAst tmp = compileExpression( ctx, expr );
-      body.destructiveAppend( tmp );
-    }
-
-    SourceCoords coords;
-    if (!ctx->defnList.empty())
-      coords = ctx->defnList.front().second->coords;
-
-    if (body.empty())
-      body += new Ast(AstCode::UNSPECIFIED, coords);
-
-    return makeListOfAst(new AstLet(
-      coords,
-      paramFrame->parent,
-      vars,
-      paramFrame,
-      ctx->frame, // a dummy body frame
-      body,
-      values
-    ));
-  }
-}
-
 void SchemeParser::processBodyForm ( SchemeParser::Context * ctx, Syntax * datum )
 {
   if (datum->isNil())
@@ -293,6 +203,95 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
 
   // Append to the list of deferred definitions
   ctx->defnList.push_back( DeferredDefine(bnd,value) );
+}
+
+ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
+{
+  if (ctx->defnList.empty())
+  {
+    ListOfAst body;
+
+    BOOST_FOREACH( Syntax * expr, ctx->exprList )
+    {
+      ListOfAst tmp = compileExpression( ctx, expr );
+      body.destructiveAppend( tmp );
+    }
+
+    if (body.empty())
+      body += new Ast(AstCode::UNSPECIFIED, SourceCoords());
+
+    return body;
+  }
+  else
+  {
+  /*
+  Trivial conversion to let.
+
+    (define-syntax letrec*
+      (syntax-rules ()
+        ((letrec* ((var1 init1) ...) body1 body2 ...)
+          (let ((var1 <undefined>) ...)
+            (set! var1 init1)
+            ...
+            (let () body1 body2 ...)))))
+  */
+
+    // Note that we don't generate the inner "(let () body1 body2 ...)" because we know
+    // for sure that it isn't necessary in our case (not general letrec*, but generating the body;
+    // we know there are no definitions in the body).
+
+    VectorOfVariable * vars = new (GC) VectorOfVariable();
+    VectorOfListOfAst * values = new (GC) VectorOfListOfAst();
+    Frame * paramFrame = ctx->frame;
+
+    // Build the let initialization
+    BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
+    {
+      if (defn.first)
+        vars->push_back( defn.first->u.var );
+      else
+        vars->push_back( ctx->frame->newAnonymous("") );
+      values->push_back( makeUnspecified(defn.second) );
+    }
+
+    // Create a dummy body frame
+    ctx->frame = new Frame(ctx->frame);
+
+    ListOfAst body;
+    VectorOfVariable::const_iterator vit = vars->begin();
+    DeferredDefineList::const_iterator dit = ctx->defnList.begin();
+    DeferredDefineList::const_iterator dit_end = ctx->defnList.end();
+    for ( ; dit != dit_end; ++vit, ++dit )
+    {
+      const DeferredDefine & defn = *dit;
+      Variable * var = *vit;
+
+      body += new AstSet( defn.second->coords, var, compileExpression( ctx, defn.second ) );
+    }
+
+    BOOST_FOREACH( Syntax * expr, ctx->exprList )
+    {
+      ListOfAst tmp = compileExpression( ctx, expr );
+      body.destructiveAppend( tmp );
+    }
+
+    SourceCoords coords;
+    if (!ctx->defnList.empty())
+      coords = ctx->defnList.front().second->coords;
+
+    if (body.empty())
+      body += new Ast(AstCode::UNSPECIFIED, coords);
+
+    return makeListOfAst(new AstLet(
+      coords,
+      paramFrame->parent,
+      vars,
+      paramFrame,
+      ctx->frame, // a dummy body frame
+      body,
+      values
+    ));
+  }
 }
 
 ListOfAst SchemeParser::compileExpression ( SchemeParser::Context * ctx, Syntax * expr )
