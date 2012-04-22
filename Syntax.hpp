@@ -149,5 +149,56 @@ struct SyntaxVector : public Syntax
   virtual bool equal ( const Syntax * x ) const;
 };
 
+#include <vector>
+#include <utility>
+
+/**
+ * Non-recursively visit all datums in DFS order, potentially non-destructively modifying them.
+ * @param datum
+ * @param f
+ * @return
+ */
+template <typename F>
+Syntax * syntaxVisitAllDFS ( Syntax * datum, const F & f )
+{
+  // NOTE: we process the lists non-recursively
+  // StackEntry::first is the car of the SyntaxPair we are processing
+  // StackEntry::second is the SyntaxPair itself
+  typedef std::pair<Syntax*,SyntaxPair*> StackEntry;
+  std::vector<StackEntry, gc_allocator<StackEntry> > stack;
+
+recur:
+  datum = f( datum );
+
+  if (datum->sclass == SyntaxClass::PAIR)
+  {
+    SyntaxPair * pair = static_cast<SyntaxPair*>(datum);
+    stack.push_back( StackEntry(NULL,pair) );
+    datum = pair->car;
+    goto recur;
+  }
+
+leave:
+  if (stack.empty())
+    return datum;
+
+  StackEntry & st = stack.back();
+  if (!st.first)
+  {
+    st.first = datum;
+    datum = st.second->cdr;
+    goto recur;
+  }
+  else
+  {
+    if (st.first != st.second->car || datum != st.second->cdr)
+      datum = new SyntaxPair( st.second->coords, st.first, datum );
+    else
+      datum = st.second;
+    stack.pop_back();
+    goto leave;
+  }
+}
+
 #endif	/* SYNTAX_HPP */
 
