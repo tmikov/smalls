@@ -28,9 +28,9 @@ public:
   ErrorInfo * ei;
 
   ErrorReporter () : count( 0 ), err( false ), ei(NULL) {}
-  virtual void error ( const SourceCoords & coords, const gc_char * message )
+  virtual void error ( const ErrorInfo & errI )
   {
-    ei = new ErrorInfo( coords, message );
+    ei = new ErrorInfo( errI );
     err = true;
     ++count;
     std::cerr << ei->formatMessage() << std::endl;

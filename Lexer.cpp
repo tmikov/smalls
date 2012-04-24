@@ -471,7 +471,7 @@ namespace {
 
 class NullReporter : public AbstractErrorReporter
 {
-  virtual void error ( const SourceCoords & coords, const gc_char * message )
+  virtual void error ( const ErrorInfo & ei )
   {}
 };
 

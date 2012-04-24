@@ -38,7 +38,12 @@ public:
 class AbstractErrorReporter
 {
 public:
-  virtual void error ( const SourceCoords & coords, const gc_char * message ) = 0;
+  virtual void error ( const ErrorInfo & ei ) = 0;
+
+  void error ( const SourceCoords & coords, const gc_char * message )
+  {
+    error( ErrorInfo( coords, message ) );
+  }
 
   void verrorFormat ( const SourceCoords & coords, const gc_char * message, std::va_list ap );
   void errorFormat ( const SourceCoords & coords, const gc_char * message, ... );
