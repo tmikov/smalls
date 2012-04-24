@@ -28,9 +28,9 @@ class ErrorReporter : public IStreamDecoderErrorReporter
 {
 public:
   int errorCount;
-  
+
   ErrorReporter () { errorCount = 0; };
-  
+
   virtual void error ( off_t offset, off_t outOffset, const gc_char * message )
   {
     std::cerr << "**error at input offsset " << offset << " and output offset " << outOffset << ":" << message << std::endl;
@@ -74,7 +74,7 @@ static void generate ( unsigned gensize )
     unsigned len = encodeUTF8( buf, v );
     buf[len] = 0;
     sampSize += len;
-    
+
     fprintf( stdout, "%s", buf );
   }
 }
@@ -91,19 +91,19 @@ public:
     clk_tck = sysconf( _SC_CLK_TCK );
     times( &t1 );
   }
-  
+
   void stamp ()
   {
     times( &t2 );
   }
-  
+
   void print ( unsigned len, unsigned iters = 1 )
   {
     long elaps = (t2.tms_utime + t2.tms_stime) - (t1.tms_utime + t1.tms_stime);
-    printf( "Elapsed time %.3f seconds, %.1f ns per char\n", 
+    printf( "Elapsed time %.3f seconds, %.1f ns per char\n",
             (double)elaps/clk_tck,
             ((double)elaps*(1e9/iters)/(clk_tck * (double)len))
-    );  
+    );
   }
 };
 
@@ -127,27 +127,27 @@ static void memtest ( const char * fileName, unsigned iters )
     exit( EXIT_FAILURE );
   }
   rewind( f );
-  
+
   gc_char * samp = new (GC) gc_char[len];
-  if (fread( samp, 1, len, f ) != len)
+  if ((long)fread( samp, 1, len, f ) != len)
   {
     perror( "fread" );
     exit( EXIT_FAILURE );
   }
   fclose( f );
-  
+
   Timer tim;
   long sum = 0;
   for ( unsigned iter = 0; iter != iters; ++iter )
   {
     CharBufInput istr(samp,len);
     UTF8StreamDecoder dec(istr,g_errors);
-    
+
     int32_t ch;
     while ((ch = dec.get()) >= 0)
       sum += ch;
   }
-  
+
   tim.stamp();
   tim.print( len, iters );
   printf( "Sum of all codepoints=%ld\n", sum);
@@ -159,7 +159,7 @@ static void streamtest ( FastCharInput & fi )
   long sum = 0;
   {
     UTF8StreamDecoder dec(fi,g_errors);
-    
+
     int32_t ch;
     while ((ch = dec.get()) >= 0)
       sum += ch;
@@ -221,12 +221,12 @@ static unsigned cvtSize ( const char * str )
 }
 
 /*
- * 
+ *
  */
 int main ( int argc, char** argv )
 {
   GC_INIT();
-  
+
   if (argc > 1)
   {
     if (std::strcmp( argv[1], "generate" ) == 0)
@@ -239,12 +239,12 @@ int main ( int argc, char** argv )
       filetest( argv[2], cvtSize(argv[3]) );
     else if (std::strcmp( argv[1], "mmap") == 0)
       mmaptest( argv[2] );
-    else 
+    else
       errorExit( "Unknown command");
   }
-  else 
+  else
     errorExit("Must specify a command\n");
-  
+
   return 0;
 }
 

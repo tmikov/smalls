@@ -87,7 +87,7 @@ size_t encodeUTF8 ( char * dst, uint32_t codePoint );
 
 inline bool isValidCodePoint ( uint32_t cp )
 {
-  if (cp >= UNICODE_SURROGATE_LO && cp <= UNICODE_SURROGATE_HI || cp > UNICODE_MAX_VALUE)
+  if ((cp >= UNICODE_SURROGATE_LO && cp <= UNICODE_SURROGATE_HI) || cp > UNICODE_MAX_VALUE)
     return false;
   return true;
 }
