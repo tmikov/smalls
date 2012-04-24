@@ -10,6 +10,8 @@ else:
   #env.Append(CCFLAGS=['-fprofile-use=prof'])
 
 
+env.Append(CCFLAGS=['-Wall'])
+
 env.Append(LIBS=['gc'])
 #env.Append(LIBS=['gcov'])
 
