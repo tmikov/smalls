@@ -35,18 +35,18 @@ class FastInput
 protected:
   ELEM * m_buf,  * m_head, * m_tail;
   off_t m_bufOffset;
-  
+
   FastInput ( ELEM * buf )
   {
     m_buf = m_head = m_tail = buf;
     m_bufOffset = 0;
   }
-  
+
 public:
   static const RES EOFVAL = _EOF;
-  
+
   virtual ~FastInput () {};
-  
+
   __forceinline RES get ()
   {
     if (likely(m_head != m_tail))
@@ -54,7 +54,7 @@ public:
     else
       return slowGet();
   }
-  
+
   __forceinline size_t read ( ELEM * dest, size_t count )
   {
     if (likely(m_tail - m_head >= count))
@@ -78,13 +78,13 @@ public:
   size_t available () const { return m_tail - m_head; }
   const ELEM * head () const { return m_head; }
   const ELEM * tail () const { return m_tail; }
-  
+
   void advance ( size_t len )
   {
-    assert( len <= m_tail - m_head );
+    assert( (ssize_t)len <= m_tail - m_head );
     m_head += len;
   }
-  
+
   /**
    * Return the offset of the next character (head)
    */
@@ -92,9 +92,9 @@ public:
   {
     return m_bufOffset + (m_head - m_buf);
   }
-  
+
   virtual size_t fillBuffer () = 0;
-  
+
 private:
   RES    slowGet ();
   RES    slowPeek ();
@@ -139,7 +139,7 @@ class CharBufInput : public FastCharInput
 public:
   CharBufInput ( const char * str, size_t len );
   CharBufInput ( const char * str );
-  CharBufInput ( const std::string & str );  
+  CharBufInput ( const std::string & str );
   virtual size_t fillBuffer ();
 
   /**
@@ -158,19 +158,19 @@ template<typename ELEM, typename RES, RES _EOF>
 class BufferedInput : public FastInput<ELEM,RES,_EOF>
 {
   typedef FastInput<ELEM,RES,_EOF> Super;
-  
+
   boost::scoped_array<ELEM> m_bufCleaner;
-  
+
 protected:
   static const unsigned DEFAULT_BUFSIZE = 4096;
   size_t m_bufSize;
-  
+
   BufferedInput ( size_t bufSize = DEFAULT_BUFSIZE )
-    : Super( new ELEM[bufSize] ), m_bufCleaner( Super::m_buf ), m_bufSize(bufSize)  
+    : Super( new ELEM[bufSize] ), m_bufCleaner( Super::m_buf ), m_bufSize(bufSize)
   {
     assert( bufSize > UNGET_LIMIT );
   };
-  
+
 public:
   static const unsigned UNGET_LIMIT = 8;
 
@@ -213,9 +213,9 @@ size_t BufferedInput<ELEM,RES,_EOF>::fillBuffer ()
     Super::m_bufOffset += Super::m_head - Super::m_buf - UNGET_LIMIT;
     Super::m_head = Super::m_tail = Super::m_buf + UNGET_LIMIT;
   }
-  
+
   doRead( Super::m_buf + m_bufSize - Super::m_tail );
- 
+
   return Super::available();
 }
 
