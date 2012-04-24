@@ -57,10 +57,10 @@ static inline unsigned setAdd ( unsigned set, Token::Enum tok )
 }
 
 SyntaxReader::SyntaxReader ( Lexer & lex )
-  : m_lex( lex ),
-    m_rsv( lex.symbolTable() ),
-    DAT_EOF( new Syntax(SyntaxClass::DEOF, SourceCoords(NULL,0,0)) ),
-    DAT_COM( new Syntax(SyntaxClass::COMMENT, SourceCoords(NULL,0,0)) )
+  : DAT_EOF( new Syntax(SyntaxClass::DEOF, SourceCoords(NULL,0,0)) ),
+    DAT_COM( new Syntax(SyntaxClass::COMMENT, SourceCoords(NULL,0,0)) ),
+    m_lex( lex ),
+    m_rsv( lex.symbolTable() )
 {
   next();
 }
@@ -131,6 +131,7 @@ Syntax * SyntaxReader::read ( unsigned termSet )
     case Token::DOT:
     case Token::RPAR:
     case Token::RSQUARE:
+    case Token::NONE:
       // Skip invalid tokens, reporting only the first one
       if (!inError)
       {
