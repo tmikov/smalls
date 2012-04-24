@@ -32,7 +32,6 @@
    _MK_ENUM(BOOL,"#t or #f") \
    _MK_ENUM(REAL,"real") \
    _MK_ENUM(INTEGER,"integer") \
-   _MK_ENUM(CHAR,"character") \
    _MK_ENUM(STR,"string") \
    _MK_ENUM(LPAR,"(") _MK_ENUM(RPAR,")") \
    _MK_ENUM(LSQUARE,"[") _MK_ENUM(RSQUARE,"]") \
