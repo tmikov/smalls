@@ -206,7 +206,7 @@ static bool  isBaseDigit ( unsigned base, int32_t ch )
   case 2: return ch == '0' || ch == '1';
   case 8: return ch >= '0' && ch <= '7';
   case 10: return ch >= '0' && ch <= '9';
-  case 16: ch |= 32; return ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f';
+  case 16: ch |= 32; return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f');
   }
   assert( false );
   return false;
@@ -385,7 +385,7 @@ Token::Enum Lexer::_nextToken ()
     // <peculiar identifier> "+"
     case '+':
       nextChar();
-      if (m_curChar >= '0' && m_curChar <= '9' || m_curChar == '.')
+      if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
         if ( (res = scanNumber(1)) != Token::NONE)
           return res;
@@ -402,7 +402,7 @@ Token::Enum Lexer::_nextToken ()
     // <peculiar identifier> "-" "->"
     case '-':
       nextChar();
-      if (m_curChar >= '0' && m_curChar <= '9' || m_curChar == '.')
+      if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
         if ( (res = scanNumber(2)) != Token::NONE)
           return res;
