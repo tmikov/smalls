@@ -119,12 +119,13 @@ public:
 
   bool isActive () const { return m_active; }
 
+
 public:
+  SymbolTable * const m_symbolTable;
   Scope * const parent;
   int const level;
 
 private:
-  SymbolTable * const m_symbolTable;
   Binding * m_bindingList; //< linking Binding::prevInScope
   bool m_active;
 
@@ -154,7 +155,6 @@ public:
 
   Symbol * const sym;
   Scope * const scope;
-  SourceCoords defCoords; //< coordinates of the source definition
 
   const BindingType::Enum btype;
   union
@@ -163,6 +163,8 @@ public:
     class Variable * var;
     Macro * macro;
   } u;
+
+  SourceCoords defCoords; //< coordinates of the source definition
 
 private:
   Binding * prev; //< the same symbol in the previous scope
