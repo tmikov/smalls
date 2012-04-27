@@ -304,8 +304,9 @@ ListOfAst SchemeParser::compileExpression ( SchemeParser::Context * ctx, Syntax 
   case SyntaxClass::INTEGER:
   case SyntaxClass::BOOL:
   case SyntaxClass::STR:
-  case SyntaxClass::VECTOR:
     return makeListOfAst( new AstDatum( expr->coords, static_cast<SyntaxValue*>(expr) ) );
+
+  // case SyntaxClass::VECTOR: //FIXME
 
   case SyntaxClass::SYMBOL:
     if ( (bnd = m_symbolTable.lookup(static_cast<SyntaxValue*>(expr)->u.symbol)) == NULL)
@@ -380,6 +381,8 @@ ListOfAst SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair
   case ResWord::LET: return compileLet( ctx, pair );
   case ResWord::LETREC:
   case ResWord::LETREC_STAR:
+
+  // case ResWord::QUOTE: // FIXME
 
   default:
     error( pair->car, "Invalid form" );
