@@ -41,5 +41,7 @@ public:
   std::string toString () const;
 };
 
+std::ostream & operator<< ( std::ostream & os, const SourceCoords & sc );
+
 #endif	/* SOURCECOORDS_HPP */
 

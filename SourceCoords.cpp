@@ -19,16 +19,20 @@
 #include "SourceCoords.hpp"
 #include <sstream>
 
+std::ostream & operator<< ( std::ostream & os, const SourceCoords & sc )
+{
+  if (sc.fileName)
+    os << sc.fileName;
+  if (sc.line)
+    os << '(' << sc.line << ')';
+  if (sc.column)
+    os << '.' << sc.column;
+  return os;
+}
+
 std::string SourceCoords::toString () const
 {
   std::stringstream os;
-
-  if (this->fileName)
-    os << this->fileName;
-  if (this->line)
-    os << '(' << this->line << ')';
-  if (this->column)
-    os << '.' << this->column;
-
+  os << *this;
   return os.str();
 }
