@@ -1,0 +1,6 @@
+# src/smalls/ast
+#
+Import("env")
+env = env.Clone()
+env.AppendUnique( CPPPATH=["$P1_INC_DIR/smalls/ast"] )
+env['module']['p1::smalls::ast'] = env.Object( env.Glob("*.cpp") )

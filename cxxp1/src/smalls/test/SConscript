@@ -1,0 +1,16 @@
+# src/smalls/test
+#
+Import("env")
+env = env.Clone()
+
+env.AppendUnique(CPPPATH="../parser")
+env.AppendUnique(CPPPATH="$P1_INC_DIR/smalls/parser")
+env.Program( target='scheme-play', source=[
+  env.Object('scheme-play.cpp'),
+  env['module']['p1::util'],
+  env['module']['p1::smalls::parser'],
+  env['module']['p1::smalls::ast'],
+  env['module']['p1::smalls::common'],
+])
+
+

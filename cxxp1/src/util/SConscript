@@ -1,0 +1,11 @@
+# src/util
+#
+Import("env")
+env = env.Clone()
+env.AppendUnique( CPPPATH=["$P1_INC_DIR/util"] )
+env['module']['p1::util'] = env.Object( env.Glob("*.cpp") )
+
+# Unit tests
+tenv = env.Clone()
+tenv.AppendUnique( CPPPATH=["."] )
+tenv['module']['utest'] += [tenv.Object( tenv.Glob( "utest/*.cpp" ) )]

@@ -1,5 +1,7 @@
 .sconsign.dblite
 nbproject
-out
+build
+_build-cache
+_vars.cache
 
 

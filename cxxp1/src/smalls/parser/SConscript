@@ -1,0 +1,12 @@
+# src/smalls/parser
+#
+Import("env")
+env = env.Clone()
+env.AppendUnique( CPPPATH=["$P1_INC_DIR/smalls/parser"] )
+env['module']['p1::smalls::parser'] = env.Object( env.Glob("*.cpp") )
+
+# Unit tests
+tenv = env.Clone()
+tenv.AppendUnique( CPPPATH=["."] )
+tenv['module']['utest'] += [tenv.Object( tenv.Glob( "utest/*.cpp" ) )]
+
