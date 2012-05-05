@@ -27,13 +27,13 @@ const char * ResWord::s_names[] =
 #undef _MK_ENUM
 
 #define _MK_ENUM(x) #x,
-const char * BindingType::s_names[] =
+const char * BindingKind::s_names[] =
 {
   _DEF_BIND_TYPES
 };
 #undef _MK_ENUM
 
-bool Scope::bind ( Binding * & res, Symbol * sym, BindingType::Enum btype, const SourceCoords & defCoords )
+bool Scope::bind ( Binding * & res, Symbol * sym, BindingKind::Enum btype, const SourceCoords & defCoords )
 {
   Binding * bnd;
 

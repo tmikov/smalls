@@ -125,28 +125,28 @@ void TestSyntaxReader::testParser ( )
   Syntax * d;
 
   d = parser.parseDatum();
-  CPPUNIT_ASSERT( SyntaxClass::INTEGER==d->sclass );
+  CPPUNIT_ASSERT( SyntaxKind::INTEGER==d->skind );
   CPPUNIT_ASSERT( 1000==((SyntaxValue *)d)->u.integer );
   validate( map, err, d );
 
   d = parser.parseDatum();
-  CPPUNIT_ASSERT( SyntaxClass::PAIR==d->sclass );
+  CPPUNIT_ASSERT( SyntaxKind::PAIR==d->skind );
   validate( map, err, d );
 
   d = parser.parseDatum();
-  CPPUNIT_ASSERT( SyntaxClass::PAIR==d->sclass );
+  CPPUNIT_ASSERT( SyntaxKind::PAIR==d->skind );
   validate( map, err, d );
 
   d = parser.parseDatum();
-  CPPUNIT_ASSERT( SyntaxClass::PAIR==d->sclass );
+  CPPUNIT_ASSERT( SyntaxKind::PAIR==d->skind );
   validate( map, err, d );
 
   d = parser.parseDatum();
-  CPPUNIT_ASSERT( SyntaxClass::PAIR==d->sclass );
+  CPPUNIT_ASSERT( SyntaxKind::PAIR==d->skind );
   validate( map, err, d );
 
   d = parser.parseDatum();
-  CPPUNIT_ASSERT( SyntaxClass::PAIR==d->sclass );
+  CPPUNIT_ASSERT( SyntaxKind::PAIR==d->skind );
   validate( map, err, d );
 
   CPPUNIT_ASSERT( !err.haveErr() );

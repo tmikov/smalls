@@ -70,15 +70,15 @@ private:
   ReservedSymbols m_rsv;
   SourceCoords m_coords;
 
-  Token::Enum next ()
+  TokenKind::Enum next ()
   {
     return m_lex.nextToken();
   }
 
   Syntax * readSkipDatCom ( unsigned termSet );
   Syntax * read ( unsigned termSet );
-  SyntaxPair * list ( const SourceCoords & coords, Token::Enum terminator, unsigned termSet );
-  SyntaxVector * vector ( const SourceCoords & coords, Token::Enum terminator, unsigned termSet );
+  SyntaxPair * list ( const SourceCoords & coords, TokenKind::Enum terminator, unsigned termSet );
+  SyntaxVector * vector ( const SourceCoords & coords, TokenKind::Enum terminator, unsigned termSet );
   SyntaxPair * abbrev ( Symbol * sym, unsigned termSet );
 
   void error ( const gc_char * msg, ... );

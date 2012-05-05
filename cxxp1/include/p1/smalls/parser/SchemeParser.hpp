@@ -123,7 +123,7 @@ private:
 
   bool needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp );
 
-  bool bindSyntaxSymbol ( Binding * & res, Scope * scope, SyntaxSymbol * ss, BindingType::Enum btype );
+  bool bindSyntaxSymbol ( Binding * & res, Scope * scope, SyntaxSymbol * ss, BindingKind::Enum btype );
   Binding * lookupSyntaxSymbol ( SyntaxSymbol * ss );
 
   SyntaxPair * needPair ( const char * formName, Syntax * datum );
@@ -136,14 +136,14 @@ private:
 
 inline SyntaxPair * SchemeParser::isPair ( Syntax * datum )
 {
-  return datum->sclass == SyntaxClass::PAIR ? static_cast<SyntaxPair*>(datum) : NULL;
+  return datum->skind == SyntaxKind::PAIR ? static_cast<SyntaxPair*>(datum) : NULL;
 }
 
 inline Binding * SchemeParser::isBinding ( Syntax * datum )
 {
-  if (datum->sclass == SyntaxClass::SYMBOL)
+  if (datum->skind == SyntaxKind::SYMBOL)
     return lookupSyntaxSymbol(static_cast<SyntaxSymbol*>(datum));
-  else if (datum->sclass == SyntaxClass::BINDING)
+  else if (datum->skind == SyntaxKind::BINDING)
     return static_cast<SyntaxBinding*>(datum)->bnd;
   else
     return NULL;

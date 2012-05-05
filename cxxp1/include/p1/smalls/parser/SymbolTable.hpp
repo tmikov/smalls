@@ -84,7 +84,7 @@ class SymbolTable;
   _MK_ENUM(VAR) \
   _MK_ENUM(MACRO)
 
-struct BindingType
+struct BindingKind
 {
   #define _MK_ENUM(x)  x,
   enum Enum
@@ -114,7 +114,7 @@ public:
     * @param sym
     * @return true if a new symbol was defined, false if it was already present in the scope
     */
-  bool bind ( Binding * & res, Symbol * sym, BindingType::Enum btype, const SourceCoords & defCoords );
+  bool bind ( Binding * & res, Symbol * sym, BindingKind::Enum btype, const SourceCoords & defCoords );
   Binding * lookupOnlyHere ( Symbol * sym );
   Binding * lookupHereAndUp ( Symbol * sym );
 
@@ -150,8 +150,8 @@ public:
 class Binding : public gc
 {
 public:
-  Binding ( Symbol * sym_, Scope * scope_, BindingType::Enum btype_, const SourceCoords & defCoords_ )
-    : sym(sym_), scope(scope_), btype(btype_), defCoords(defCoords_)
+  Binding ( Symbol * sym_, Scope * scope_, BindingKind::Enum btype_, const SourceCoords & defCoords_ )
+    : sym(sym_), scope(scope_), bkind(btype_), defCoords(defCoords_)
   {
     this->prev = NULL;
   }
@@ -159,7 +159,7 @@ public:
   Symbol * const sym;
   Scope * const scope;
 
-  const BindingType::Enum btype;
+  const BindingKind::Enum bkind;
   union
   {
     ResWord::Enum resWord;

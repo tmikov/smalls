@@ -108,78 +108,78 @@ void TestLexer::testStrings ()
     ErrorReporter err;
     Lexer lex( t1, "input1", map, err );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( std::strcmp("aaa", lex.valueString())==0 );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( std::strcmp("\a\b\t\n\v\f\r\a\"\\", lex.valueString())==0 );
 
     // Octal
     //
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("\1", lex.valueString())==0 );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("\12", lex.valueString())==0 );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("\123", lex.valueString())==0 );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("\123" "4", lex.valueString())==0 );
 
     // Hex
     //
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("\x12", lex.valueString())==0 );
 
     // Unicode
     //
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
 
     CPPUNIT_ASSERT( std::strcmp("\x09", lex.valueString())==0 );
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("\x09", lex.valueString())==0 );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
 
     // End-of-line escape
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("aaabbb", lex.valueString())==0 );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( !err.haveErr() );
     CPPUNIT_ASSERT( std::strcmp("aaaccc", lex.valueString())==0 );
 
-    CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::EOFTOK==lex.nextToken() );
   }
 
   {
@@ -190,7 +190,7 @@ void TestLexer::testStrings ()
     ErrorReporter err;
     Lexer lex( t1, "input1.1", map, err );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
   }
   {
@@ -201,7 +201,7 @@ void TestLexer::testStrings ()
     ErrorReporter err;
     Lexer lex( t1, "input2", map, err );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
   }
   {
@@ -212,7 +212,7 @@ void TestLexer::testStrings ()
     ErrorReporter err;
     Lexer lex( t1, "input3", map, err );
 
-    CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+    CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
     CPPUNIT_ASSERT( err.haveErr() );
   }
 }
@@ -247,48 +247,48 @@ void TestLexer::testLexer ( )
   ErrorReporter err;
   Lexer lex( t1, "input4", map, err );
 
-  CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::RPAR==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::LSQUARE==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::RSQUARE==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::APOSTR==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::ACCENT==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::LPAR==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::RPAR==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::LSQUARE==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::RSQUARE==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::APOSTR==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::ACCENT==lex.nextToken() );
 
-  CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::LPAR==lex.nextToken() );
   CPPUNIT_ASSERT( err.coords( 2, 1 ) );
 
-  CPPUNIT_ASSERT( Token::COMMA==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::COMMA_AT==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::COMMA==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::COMMA_AT==lex.nextToken() );
 
   // Test strings
-  CPPUNIT_ASSERT( Token::STR==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::STR==lex.nextToken() );
   CPPUNIT_ASSERT( std::strcmp("aaa", lex.valueString())==0 );
 
   // Test comments
-  CPPUNIT_ASSERT( Token::COMMA==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::COMMA_AT==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::COMMA==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::COMMA_AT==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::COMMA==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::COMMA_AT==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::COMMA==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::COMMA_AT==lex.nextToken() );
 
-  CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
-  CPPUNIT_ASSERT( Token::LPAR==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::LPAR==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::LPAR==lex.nextToken() );
 
   //  "aaa - -- ->\n"
-  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::SYMBOL==lex.nextToken() );
   CPPUNIT_ASSERT( strcmp("aaa", lex.valueSymbol()->name) == 0 );
-  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::SYMBOL==lex.nextToken() );
   CPPUNIT_ASSERT( strcmp("-", lex.valueSymbol()->name) == 0 );
-  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::SYMBOL==lex.nextToken() );
   CPPUNIT_ASSERT( strcmp("--", lex.valueSymbol()->name) == 0 );
-  CPPUNIT_ASSERT( Token::SYMBOL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::SYMBOL==lex.nextToken() );
   CPPUNIT_ASSERT( strcmp("->", lex.valueSymbol()->name) == 0 );
 
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 'a'==lex.valueInteger() );
 
-  CPPUNIT_ASSERT( Token::DOT==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::DOT==lex.nextToken() );
 
-  CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::EOFTOK==lex.nextToken() );
 }
 
 void TestLexer::testLexer2 ( )
@@ -317,107 +317,107 @@ void TestLexer::testLexer2 ( )
   ErrorReporter err;
   Lexer lex( t1, "input5", map, err );
 
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 1==lex.valueInteger() );
 
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 1==lex.valueInteger() );
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( -1==lex.valueInteger() );
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 100==lex.valueInteger() );
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( -100==lex.valueInteger() );
 
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 0x100==lex.valueInteger() );
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( -0x100==lex.valueInteger() );
 
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 0==lex.valueInteger() );
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 0==lex.valueInteger() );
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 0==lex.valueInteger() );
 
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( 0xA==lex.valueInteger() );
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT( -0xA==lex.valueInteger() );
 
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 1.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 2.34, lex.valueReal() );
 
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 0.2, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( -0.2, lex.valueReal() );
 
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 0.2, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 0.2, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 1.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( -2.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 2.0, lex.valueReal() );
 
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 3.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 4.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 5.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 6.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 7.0, lex.valueReal() );
 
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 30.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 40.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 0.5, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 60.0, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 0.7, lex.valueReal() );
 
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 1.2e3, lex.valueReal() );
 
   //"0x1.0p2 0x1p-3\n"
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 0x1.0p2, lex.valueReal() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_EQUAL( 0x1p-3, lex.valueReal() );
 
   //"0xp2 0x.3\n"
   CPPUNIT_ASSERT( !err.haveErr() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_MESSAGE( "0xp2", err.haveErr() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_MESSAGE( "0x.3", err.haveErr() );
 
-  CPPUNIT_ASSERT( Token::INTEGER==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::INTEGER==lex.nextToken() );
   CPPUNIT_ASSERT_MESSAGE( "01", err.haveErr() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_MESSAGE( "+.e10", err.haveErr() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_MESSAGE( "1.2p10", err.haveErr() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_MESSAGE( "0x1.2e10", err.haveErr() );
-  CPPUNIT_ASSERT( Token::REAL==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::REAL==lex.nextToken() );
   CPPUNIT_ASSERT_MESSAGE( "0b10.0", err.haveErr() );
 
 
 
-  CPPUNIT_ASSERT( Token::EOFTOK==lex.nextToken() );
+  CPPUNIT_ASSERT( TokenKind::EOFTOK==lex.nextToken() );
 }
 

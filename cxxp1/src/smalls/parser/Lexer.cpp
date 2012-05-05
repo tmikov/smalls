@@ -23,14 +23,14 @@ using namespace p1;
 using namespace p1::smalls;
 
 #define _MK_ENUM(name,repr)  #name,
-const char * Token::s_names[] =
+const char * TokenKind::s_names[] =
 {
   _DEF_TOKENS
 };
 #undef _MK_ENUM
 
 #define _MK_ENUM(name,repr)  repr,
-const char * Token::s_reprs[] =
+const char * TokenKind::s_reprs[] =
 {
   _DEF_TOKENS
 };
@@ -42,7 +42,7 @@ Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolTable & symbo
     m_tokCoords( fileName, 0, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
   m_curChar = 0;
-  m_curToken = Token::NONE;
+  m_curToken = TokenKind::NONE;
   m_inNestedComment = false;
   m_valueString = NULL;
   m_valueSymbol = NULL;
@@ -227,23 +227,23 @@ static int baseDigitToInt ( int32_t ch )
   return ch <= '9' ? ch - '0'  : ch - ('a' - 10);
 }
 
-Token::Enum Lexer::_nextToken ()
+TokenKind::Enum Lexer::_nextToken ()
 {
   for(;;)
   {
-    Token::Enum res;
+    TokenKind::Enum res;
     saveCoords();
     switch (m_curChar)
     {
     case -1:
-      return Token::EOFTOK;
+      return TokenKind::EOFTOK;
 
-    case '(': nextChar(); return Token::LPAR;
-    case ')': nextChar(); return Token::RPAR;
-    case '[': nextChar(); return Token::LSQUARE;
-    case ']': nextChar(); return Token::RSQUARE;
-    case '\'': nextChar(); return Token::APOSTR;
-    case '`': nextChar(); return Token::ACCENT;
+    case '(': nextChar(); return TokenKind::LPAR;
+    case ')': nextChar(); return TokenKind::RPAR;
+    case '[': nextChar(); return TokenKind::LSQUARE;
+    case ']': nextChar(); return TokenKind::RSQUARE;
+    case '\'': nextChar(); return TokenKind::APOSTR;
+    case '`': nextChar(); return TokenKind::ACCENT;
 
     // nested commend end handling.
     case '*':
@@ -252,7 +252,7 @@ Token::Enum Lexer::_nextToken ()
       {
         nextChar();
         if (m_inNestedComment)
-          return Token::NESTED_COMMENT_END;
+          return TokenKind::NESTED_COMMENT_END;
         else
           m_errors->error( m_tokCoords, "Unexpected */" );
       }
@@ -260,7 +260,7 @@ Token::Enum Lexer::_nextToken ()
       {
         m_strBuf.reset();
         m_strBuf.append( '*' );
-        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
           return res;
       }
       break;
@@ -270,15 +270,15 @@ Token::Enum Lexer::_nextToken ()
       if (m_curChar == '@')
       {
         nextChar();
-        return Token::COMMA_AT;
+        return TokenKind::COMMA_AT;
       }
       else
-        return Token::COMMA;
+        return TokenKind::COMMA;
 
     // <string>
     case '"':
       nextChar();
-      if ( (res = scanString()) != Token::NONE)
+      if ( (res = scanString()) != TokenKind::NONE)
         return res;
       break;
 
@@ -303,13 +303,13 @@ Token::Enum Lexer::_nextToken ()
           if (!m_inNestedComment)
             scanNestedComment();
           else
-            return Token::NESTED_COMMENT_START;
+            return TokenKind::NESTED_COMMENT_START;
         }
         else
         {
           m_strBuf.reset();
           m_strBuf.append( '/' );
-          if ( (res = scanRemainingIdentifier()) != Token::NONE)
+          if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
             return res;
         }
       }
@@ -319,7 +319,7 @@ Token::Enum Lexer::_nextToken ()
     // <digit>
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-      if ( (res = scanNumber(3)) != Token::NONE)
+      if ( (res = scanNumber(3)) != TokenKind::NONE)
         return res;
       break;
 
@@ -329,37 +329,37 @@ Token::Enum Lexer::_nextToken ()
       {
       case ';': // #; datum comment
         nextChar();
-        return Token::DATUM_COMMENT;
+        return TokenKind::DATUM_COMMENT;
 
-      case '(':  /* #( */ nextChar(); return Token::HASH_LPAR;
-      case '\'': /* #' */ nextChar(); return Token::HASH_APOSTR;
-      case '`':  /* #` */ nextChar(); return Token::HASH_ACCENT;
+      case '(':  /* #( */ nextChar(); return TokenKind::HASH_LPAR;
+      case '\'': /* #' */ nextChar(); return TokenKind::HASH_APOSTR;
+      case '`':  /* #` */ nextChar(); return TokenKind::HASH_ACCENT;
       case ',':  /* #, #,@ */
         nextChar();
         if (m_curChar == '@') // #,@
         {
           nextChar();
-          return Token::HASH_COMMA_AT;
+          return TokenKind::HASH_COMMA_AT;
         }
         else
-          return Token::HASH_COMMA;
+          return TokenKind::HASH_COMMA;
 
       case 't': case 'T': // #t #T
         nextChar();
         if (!isDelimiter(m_curChar))
           error( 0, "Bad #x form" );
         m_valueBool = true;
-        return Token::BOOL;
+        return TokenKind::BOOL;
       case 'f': case 'F': // #f #F
         nextChar();
         if (!isDelimiter(m_curChar))
           error( 0, "Bad #x form" );
         m_valueBool = false;
-        return Token::BOOL;
+        return TokenKind::BOOL;
 
       case '"': //  character constant
         nextChar();
-        if ( (res = scanCharacterConstant()) != Token::NONE)
+        if ( (res = scanCharacterConstant()) != TokenKind::NONE)
           return res;
         break;
 
@@ -381,7 +381,7 @@ Token::Enum Lexer::_nextToken ()
         m_strBuf.reset();
         m_strBuf.append( (char)m_curChar );
         nextChar();
-        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
           return res;
       }
       break;
@@ -391,14 +391,14 @@ Token::Enum Lexer::_nextToken ()
       nextChar();
       if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
-        if ( (res = scanNumber(1)) != Token::NONE)
+        if ( (res = scanNumber(1)) != TokenKind::NONE)
           return res;
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append( '+' );
-        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
           return res;
       }
       break;
@@ -408,14 +408,14 @@ Token::Enum Lexer::_nextToken ()
       nextChar();
       if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
-        if ( (res = scanNumber(2)) != Token::NONE)
+        if ( (res = scanNumber(2)) != TokenKind::NONE)
           return res;
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append( '-' );
-        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
           return res;
       }
       break;
@@ -424,24 +424,24 @@ Token::Enum Lexer::_nextToken ()
     case '.':
       nextChar();
       if (isDelimiter(m_curChar))
-        return Token::DOT;
+        return TokenKind::DOT;
       else if (m_curChar >= '0' && m_curChar <= '9')
       {
-        if ( (res = scanNumber(4)) != Token::NONE)
+        if ( (res = scanNumber(4)) != TokenKind::NONE)
           return res;
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append('.');
-        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
           return res;
       }
       break;
 
     // <inline hex escape>
     case '\\':
-      if ( (res = scanRemainingIdentifier()) != Token::NONE)
+      if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
         return res;
       break;
 
@@ -458,7 +458,7 @@ Token::Enum Lexer::_nextToken ()
         m_strBuf.reset();
         m_strBuf.appendCodePoint( m_curChar );
         nextChar();
-        if ( (res = scanRemainingIdentifier()) != Token::NONE)
+        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
           return res;
       }
       else
@@ -506,14 +506,14 @@ void Lexer::scanNestedComment ()
     {
       switch (nextToken())
       {
-      case Token::NESTED_COMMENT_START:
+      case TokenKind::NESTED_COMMENT_START:
         ++level;
         break;
-      case Token::NESTED_COMMENT_END:
+      case TokenKind::NESTED_COMMENT_END:
         if (--level == 0)
           goto exitLoop;
         break;
-      case Token::EOFTOK:
+      case TokenKind::EOFTOK:
         goto exitLoop; // we must report the error after we have restored the error reporter
       default:
         break;
@@ -530,30 +530,30 @@ exitLoop:;
   m_errors = saveReporter;
   m_inNestedComment = false;
 
-  if (m_curToken == Token::EOFTOK)
+  if (m_curToken == TokenKind::EOFTOK)
     error( 0, "EOF in comment started on line %u", nestedCommentStart.line );
 }
 
-Token::Enum Lexer::scanCharacterConstant ()
+TokenKind::Enum Lexer::scanCharacterConstant ()
 {
   if (m_curChar == '"')
   {
     error( 0, "Invalid empty character constant" );
     nextChar();
     m_valueInteger = ' ';
-    return Token::INTEGER;
+    return TokenKind::INTEGER;
   }
   switch (scanSingleCharacter())
   {
-  case Token::INTEGER: // 8-bit character
-  case Token::STR:     // Unicode codepoint
+  case TokenKind::INTEGER: // 8-bit character
+  case TokenKind::STR:     // Unicode codepoint
     break;
-  case Token::NONE:    // error
+  case TokenKind::NONE:    // error
     m_valueInteger = ' ';
     break;
-  case Token::EOFTOK:  // eof/error
+  case TokenKind::EOFTOK:  // eof/error
     m_valueInteger = ' ';
-    return Token::INTEGER;
+    return TokenKind::INTEGER;
   default:
     assert( false );
   }
@@ -567,10 +567,10 @@ Token::Enum Lexer::scanCharacterConstant ()
       error( 0, "Character constant not followed by a delimiter" );
   }
 
-  return Token::INTEGER;
+  return TokenKind::INTEGER;
 }
 
-Token::Enum Lexer::scanString ()
+TokenKind::Enum Lexer::scanString ()
 {
   m_strBuf.reset();
 
@@ -583,15 +583,15 @@ Token::Enum Lexer::scanString ()
     }
     switch (scanSingleCharacter())
     {
-    case Token::INTEGER:
+    case TokenKind::INTEGER:
       m_strBuf.append( (char)m_valueInteger );
       break;
-    case Token::STR:
+    case TokenKind::STR:
       m_strBuf.appendCodePoint( (int32_t)m_valueInteger );
       break;
-    case Token::EOFTOK:
+    case TokenKind::EOFTOK:
       goto exitLoop;
-    case Token::NONE:
+    case TokenKind::NONE:
       break;
     default:
       assert( false );
@@ -604,7 +604,7 @@ exitLoop:
 
   m_strBuf.append( 0 );
   m_valueString = m_strBuf.createGCString();
-  return Token::STR;
+  return TokenKind::STR;
 }
 
 /**
@@ -616,19 +616,19 @@ exitLoop:
  * <li>Token::STRING - a 32-bit validated Unicode codepoint
  * </ul>
  */
-Token::Enum Lexer::scanSingleCharacter ()
+TokenKind::Enum Lexer::scanSingleCharacter ()
 {
 loop: // We loop only if we encounter \ LF sequence.
   if (m_curChar < 0)
   {
     error( 0, "Unterminated string constant at end of input. String started on line %u column %u",
             m_tokCoords.line, m_tokCoords.column );
-    return Token::EOFTOK;
+    return TokenKind::EOFTOK;
   }
   else if (m_curChar == '\n')
   {
     m_errors->error( m_tokCoords, "Unterminated string constant" );
-    return Token::EOFTOK;
+    return TokenKind::EOFTOK;
   }
   else if (m_curChar == '\\')
   {
@@ -638,33 +638,33 @@ loop: // We loop only if we encounter \ LF sequence.
     case -1:
       error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
               m_tokCoords.line, m_tokCoords.column );
-      return Token::EOFTOK;
+      return TokenKind::EOFTOK;
 
-    case 'a': m_valueInteger = '\a'; nextChar(); return Token::INTEGER;
-    case 'b': m_valueInteger = '\b'; nextChar(); return Token::INTEGER;
-    case 't': m_valueInteger = '\t'; nextChar(); return Token::INTEGER;
-    case 'n': m_valueInteger = '\n'; nextChar(); return Token::INTEGER;
-    case 'v': m_valueInteger = '\v'; nextChar(); return Token::INTEGER;
-    case 'f': m_valueInteger = '\f'; nextChar(); return Token::INTEGER;
-    case 'r': m_valueInteger = '\r'; nextChar(); return Token::INTEGER;
-    case '"': m_valueInteger = '"'; nextChar();  return Token::INTEGER;
-    case '\\': m_valueInteger = '\\'; nextChar(); return Token::INTEGER;
+    case 'a': m_valueInteger = '\a'; nextChar(); return TokenKind::INTEGER;
+    case 'b': m_valueInteger = '\b'; nextChar(); return TokenKind::INTEGER;
+    case 't': m_valueInteger = '\t'; nextChar(); return TokenKind::INTEGER;
+    case 'n': m_valueInteger = '\n'; nextChar(); return TokenKind::INTEGER;
+    case 'v': m_valueInteger = '\v'; nextChar(); return TokenKind::INTEGER;
+    case 'f': m_valueInteger = '\f'; nextChar(); return TokenKind::INTEGER;
+    case 'r': m_valueInteger = '\r'; nextChar(); return TokenKind::INTEGER;
+    case '"': m_valueInteger = '"'; nextChar();  return TokenKind::INTEGER;
+    case '\\': m_valueInteger = '\\'; nextChar(); return TokenKind::INTEGER;
 
     case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
       m_valueInteger = scanOctalEscape();
-      return Token::INTEGER;
+      return TokenKind::INTEGER;
     case 'x':
       nextChar();
       m_valueInteger = scanHexEscape();
-      return Token::INTEGER;
+      return TokenKind::INTEGER;
     case 'u':
       nextChar();
       m_valueInteger = scanUnicodeEscape(4);
-      return Token::STR;
+      return TokenKind::STR;
     case 'U':
       nextChar();
       m_valueInteger = scanUnicodeEscape(8);
-      return Token::STR;
+      return TokenKind::STR;
 
     default:
       // '\\' <intraline whitespace> '\n'
@@ -680,7 +680,7 @@ loop: // We loop only if we encounter \ LF sequence.
       {
         error( 0, "Unterminated string escape at end of input. String started on line %u column %u",
                 m_tokCoords.line, m_tokCoords.column );
-        return Token::EOFTOK;
+        return TokenKind::EOFTOK;
       }
       else // Invalid escape!
       {
@@ -690,7 +690,7 @@ loop: // We loop only if we encounter \ LF sequence.
         tmp[encodeUTF8( tmp, m_curChar )] = 0;
         error( 0, "Invalid string escape \\%s", tmp );
         nextChar();
-        return Token::NONE;
+        return TokenKind::NONE;
       }
       break;
     }
@@ -699,7 +699,7 @@ loop: // We loop only if we encounter \ LF sequence.
   {
     m_valueInteger =  m_curChar;
     nextChar();
-    return Token::STR;
+    return TokenKind::STR;
   }
 }
 
@@ -777,7 +777,7 @@ uint8_t Lexer::scanOctalEscape ()
   return res;
 }
 
-Token::Enum Lexer::scanRemainingIdentifier ()
+TokenKind::Enum Lexer::scanRemainingIdentifier ()
 {
   for(;;)
   {
@@ -804,7 +804,7 @@ Token::Enum Lexer::scanRemainingIdentifier ()
       {
         nextChar();
         if (m_inNestedComment)
-          return Token::NESTED_COMMENT_END;
+          return TokenKind::NESTED_COMMENT_END;
         else
           m_errors->error( m_tokCoords, "Unexpected */" );
       }
@@ -852,13 +852,13 @@ exitLoop:
   return identifier( name );
 }
 
-Token::Enum Lexer::identifier ( const gc_char * name )
+TokenKind::Enum Lexer::identifier ( const gc_char * name )
 {
   m_valueSymbol = m_symbolTable.newSymbol( name );
-  return Token::SYMBOL;
+  return TokenKind::SYMBOL;
 }
 
-Token::Enum Lexer::scanNumber ( unsigned state )
+TokenKind::Enum Lexer::scanNumber ( unsigned state )
 {
   unsigned base = 10;
   bool real = false;
@@ -1040,13 +1040,13 @@ state_4:
   {
     if (err)
       m_valueInteger = 0;
-    return Token::INTEGER;
+    return TokenKind::INTEGER;
   }
   else
   {
     if (err)
       m_valueReal = 0.0 / 0.0;
-    return Token::REAL;
+    return TokenKind::REAL;
   }
 }
 

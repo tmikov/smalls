@@ -50,7 +50,7 @@ namespace smalls {
    _MK_ENUM(NESTED_COMMENT_START,"#|") /* internal use only! */ \
    _MK_ENUM(NESTED_COMMENT_END,"|#")   /* internal use only! */
 
-struct Token
+struct TokenKind
 {
   #define _MK_ENUM(name,repr)  name,
   enum Enum
@@ -100,7 +100,7 @@ class Lexer : public gc
   bool m_inNestedComment;
   detail::StringCollector m_strBuf;
 
-  Token::Enum m_curToken;
+  TokenKind::Enum m_curToken;
   const gc_char * m_valueString;
   Symbol * m_valueSymbol;
   int64_t m_valueInteger;
@@ -122,12 +122,12 @@ public:
   SymbolTable & symbolTable () { return m_symbolTable; }
   AbstractErrorReporter & errorReporter () { return *m_errors; }
 
-  Token::Enum nextToken ()
+  TokenKind::Enum nextToken ()
   {
     return m_curToken = _nextToken();
   }
 
-  Token::Enum curToken () const { return m_curToken; }
+  TokenKind::Enum curToken () const { return m_curToken; }
   const SourceCoords & coords () const { return m_tokCoords; }
   const gc_char * valueString () const { return m_valueString; }
   Symbol * valueSymbol () const { return m_valueSymbol; }
@@ -152,18 +152,18 @@ private:
     m_tokCoords.column = m_decoder.offset() - m_lineOffset;
   }
 
-  Token::Enum _nextToken ();
+  TokenKind::Enum _nextToken ();
 
   void scanNestedComment ();
-  Token::Enum scanCharacterConstant ();
-  Token::Enum scanString ();
-  Token::Enum scanSingleCharacter ();
+  TokenKind::Enum scanCharacterConstant ();
+  TokenKind::Enum scanString ();
+  TokenKind::Enum scanSingleCharacter ();
   int32_t scanUnicodeEscape ( unsigned maxLen );
   uint8_t scanHexEscape ();
   uint8_t scanOctalEscape ();
-  Token::Enum scanRemainingIdentifier ();
-  Token::Enum identifier ( const gc_char * name );
-  Token::Enum scanNumber ( unsigned state=0 );
+  TokenKind::Enum scanRemainingIdentifier ();
+  TokenKind::Enum identifier ( const gc_char * name );
+  TokenKind::Enum scanNumber ( unsigned state=0 );
   bool scanUInt ( unsigned base );
 
   static bool isNewLine ( int32_t ch );

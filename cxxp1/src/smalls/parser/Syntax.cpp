@@ -68,7 +68,7 @@ bool equal ( const Mark * a, const Mark * b )
 
 
 #define _MK_ENUM(x) #x,
-const char * SyntaxClass::s_names[] =
+const char * SyntaxKind::s_names[] =
 {
   _DEF_SYNTAX_CLASSES
 };
@@ -81,9 +81,9 @@ Syntax * Syntax::wrap ( Mark * mark )
 
 Syntax * unwrapCompletely ( Syntax * d, Mark * mark )
 {
-  switch (d->sclass)
+  switch (d->skind)
   {
-  case SyntaxClass::PAIR:
+  case SyntaxKind::PAIR:
     {
       SyntaxPair * p = static_cast<SyntaxPair*>(d);
       Mark * newMark = concat(mark,p->mark);
@@ -94,7 +94,7 @@ Syntax * unwrapCompletely ( Syntax * d, Mark * mark )
     }
     break;
 
-  case SyntaxClass::VECTOR:
+  case SyntaxKind::VECTOR:
     {
       SyntaxVector * v = static_cast<SyntaxVector*>(d);
       Mark * newMark = concat(mark,v->mark);
@@ -125,22 +125,22 @@ Syntax * unwrapCompletely ( Syntax * d, Mark * mark )
 
 void Syntax::toStream ( std::ostream & os ) const
 {
-  os << SyntaxClass::name(sclass);
+  os << SyntaxKind::name(skind);
 }
 
 bool Syntax::equal ( const Syntax * x ) const
 {
-  return sclass == x->sclass;
+  return skind == x->skind;
 }
 
 void SyntaxValue::toStream ( std::ostream & os ) const
 {
-  switch (sclass)
+  switch (skind)
   {
-  case SyntaxClass::REAL:    os << u.real; break;
-  case SyntaxClass::INTEGER: os << u.integer; break;
-  case SyntaxClass::BOOL:    os << u.vbool; break;
-  case SyntaxClass::STR:     os << "\"" << u.str << "\""; break; // FIXME: utf-8 decoding & escaping!
+  case SyntaxKind::REAL:    os << u.real; break;
+  case SyntaxKind::INTEGER: os << u.integer; break;
+  case SyntaxKind::BOOL:    os << u.vbool; break;
+  case SyntaxKind::STR:     os << "\"" << u.str << "\""; break; // FIXME: utf-8 decoding & escaping!
   default:
     assert( false );
   }
@@ -150,16 +150,16 @@ bool SyntaxValue::equal ( const Syntax * x ) const
 {
   if (x == this)
     return true;
-  if (sclass != x->sclass)
+  if (skind != x->skind)
     return false;
   const SyntaxValue * p = (const SyntaxValue *)x;
 
-  switch (sclass)
+  switch (skind)
   {
-  case SyntaxClass::REAL:    return u.real == p->u.real;
-  case SyntaxClass::INTEGER: return u.integer == p->u.integer;
-  case SyntaxClass::BOOL:    return u.vbool == p->u.vbool;
-  case SyntaxClass::STR:     return std::strcmp( u.str, p->u.str) == 0;
+  case SyntaxKind::REAL:    return u.real == p->u.real;
+  case SyntaxKind::INTEGER: return u.integer == p->u.integer;
+  case SyntaxKind::BOOL:    return u.vbool == p->u.vbool;
+  case SyntaxKind::STR:     return std::strcmp( u.str, p->u.str) == 0;
   default:
     assert( false );
     return false;
@@ -197,7 +197,7 @@ bool SyntaxSymbol::equal ( const Syntax * x ) const
 {
   if (x == this)
     return true;
-  if (SyntaxClass::SYMBOL != x->sclass)
+  if (SyntaxKind::SYMBOL != x->skind)
     return false;
   const SyntaxSymbol * p = (const SyntaxSymbol *)x;
   return this->symbol == p->symbol && p1::smalls::equal(this->mark, p->mark);
@@ -210,7 +210,7 @@ void SyntaxBinding::toStream ( std::ostream & os ) const
 
 bool SyntaxBinding::equal ( const Syntax * x ) const
 {
-  if (x->sclass != SyntaxClass::BINDING)
+  if (x->skind != SyntaxKind::BINDING)
     return false;
   const SyntaxBinding * p = (const SyntaxBinding *)x;
   return p->bnd == bnd;
@@ -252,7 +252,7 @@ void SyntaxPair::toStream ( std::ostream & os ) const
     {
       break;
     }
-    else if (p->m_cdr->sclass == SyntaxClass::PAIR)
+    else if (p->m_cdr->skind == SyntaxKind::PAIR)
     {
       p = static_cast<const SyntaxPair *>(p->m_cdr);
       os << " ";
@@ -270,7 +270,7 @@ bool SyntaxPair::equal ( const Syntax * x ) const
 {
   if (x == this)
     return true;
-  if (x->sclass != SyntaxClass::PAIR)
+  if (x->skind != SyntaxKind::PAIR)
     return false;
   const SyntaxPair * p = (const SyntaxPair *)x;
 
@@ -284,7 +284,7 @@ Syntax * SyntaxNil::wrap ( Mark * mark )
 
 bool SyntaxNil::equal ( const Syntax * x ) const
 {
-  return x->sclass == SyntaxClass::NIL;
+  return x->skind == SyntaxKind::NIL;
 }
 
 void SyntaxNil::toStream ( std::ostream & os ) const
@@ -339,7 +339,7 @@ bool SyntaxVector::equal ( const Syntax * x ) const
 {
   if (x == this)
     return true;
-  if (sclass != x->sclass)
+  if (skind != x->skind)
     return false;
   const SyntaxVector * v = (const SyntaxVector *)x;
   if (!p1::smalls::equal(this->mark, v->mark))
@@ -357,7 +357,7 @@ void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax
   //os << datum->coords.line << ':' << datum->coords.column << ':';
   if (datum->isNil())
     os << "()";
-  else if (datum->sclass == SyntaxClass::VECTOR)
+  else if (datum->skind == SyntaxKind::VECTOR)
   {
     const SyntaxVector * vec = (const SyntaxVector*)datum;
     os << "#(";
@@ -369,7 +369,7 @@ void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax
     }
     os << ')';
   }
-  else if (datum->sclass == SyntaxClass::PAIR)
+  else if (datum->skind == SyntaxKind::PAIR)
   {
     const SyntaxPair * p = (const SyntaxPair*)datum;
     os << '(';
@@ -387,7 +387,7 @@ void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax
       if (p->m_cdr->isNil())
         break;
 
-      if (p->m_cdr->sclass == SyntaxClass::PAIR)
+      if (p->m_cdr->skind == SyntaxKind::PAIR)
       {
         p = (const SyntaxPair *) p->m_cdr;
         os << ' ';

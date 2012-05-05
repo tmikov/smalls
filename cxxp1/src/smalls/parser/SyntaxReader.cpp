@@ -49,19 +49,19 @@ ReservedSymbols::ReservedSymbols ( SymbolTable & map ) :
   sym_macro_env         ( map.newSymbol( "macro-env" ) )
 {}
 
-static inline bool setContains ( unsigned set, Token::Enum tok )
+static inline bool setContains ( unsigned set, TokenKind::Enum tok )
 {
   return (set & (1 << tok)) != 0;
 }
 
-static inline unsigned setAdd ( unsigned set, Token::Enum tok )
+static inline unsigned setAdd ( unsigned set, TokenKind::Enum tok )
 {
   return set | (1 << tok);
 }
 
 SyntaxReader::SyntaxReader ( Lexer & lex )
-  : DAT_EOF( new Syntax(SyntaxClass::DEOF, SourceCoords(NULL,0,0)) ),
-    DAT_COM( new Syntax(SyntaxClass::COMMENT, SourceCoords(NULL,0,0)) ),
+  : DAT_EOF( new Syntax(SyntaxKind::DEOF, SourceCoords(NULL,0,0)) ),
+    DAT_COM( new Syntax(SyntaxKind::COMMENT, SourceCoords(NULL,0,0)) ),
     m_lex( lex ),
     m_rsv( lex.symbolTable() )
 {
@@ -78,7 +78,7 @@ void SyntaxReader::error ( const gc_char * msg, ... )
 
 Syntax * SyntaxReader::parseDatum ()
 {
-  return readSkipDatCom( setAdd(0, Token::EOFTOK) );
+  return readSkipDatCom( setAdd(0, TokenKind::EOFTOK) );
 }
 
 Syntax * SyntaxReader::readSkipDatCom ( unsigned termSet )
@@ -99,46 +99,46 @@ Syntax * SyntaxReader::read ( unsigned termSet )
     Syntax * res;
     switch (m_lex.curToken())
     {
-    case Token::EOFTOK: return DAT_EOF;
+    case TokenKind::EOFTOK: return DAT_EOF;
 
-    case Token::BOOL:    res = new SyntaxValue( SyntaxClass::BOOL,    m_lex.coords(), m_lex.valueBool()    ); next(); return res;
-    case Token::INTEGER: res = new SyntaxValue( SyntaxClass::INTEGER, m_lex.coords(), m_lex.valueInteger() ); next(); return res;
-    case Token::REAL:    res = new SyntaxValue( SyntaxClass::REAL,    m_lex.coords(), m_lex.valueReal()    ); next(); return res;
-    case Token::STR:     res = new SyntaxValue( SyntaxClass::STR,     m_lex.coords(), m_lex.valueString()  ); next(); return res;
-    case Token::SYMBOL:  res = new SyntaxSymbol( m_lex.coords(), m_lex.valueSymbol()  ); next(); return res;
+    case TokenKind::BOOL:    res = new SyntaxValue( SyntaxKind::BOOL,    m_lex.coords(), m_lex.valueBool()    ); next(); return res;
+    case TokenKind::INTEGER: res = new SyntaxValue( SyntaxKind::INTEGER, m_lex.coords(), m_lex.valueInteger() ); next(); return res;
+    case TokenKind::REAL:    res = new SyntaxValue( SyntaxKind::REAL,    m_lex.coords(), m_lex.valueReal()    ); next(); return res;
+    case TokenKind::STR:     res = new SyntaxValue( SyntaxKind::STR,     m_lex.coords(), m_lex.valueString()  ); next(); return res;
+    case TokenKind::SYMBOL:  res = new SyntaxSymbol( m_lex.coords(), m_lex.valueSymbol()  ); next(); return res;
 
-    case Token::LPAR:
-      { SourceCoords coords=m_lex.coords(); next(); return list( coords, Token::RPAR, termSet ); }
-    case Token::LSQUARE:
-      { SourceCoords coords=m_lex.coords(); next(); return list( coords, Token::RSQUARE, termSet ); }
-    case Token::HASH_LPAR:
-      { SourceCoords coords=m_lex.coords(); next(); return vector( coords, Token::RPAR, termSet ); }
+    case TokenKind::LPAR:
+      { SourceCoords coords=m_lex.coords(); next(); return list( coords, TokenKind::RPAR, termSet ); }
+    case TokenKind::LSQUARE:
+      { SourceCoords coords=m_lex.coords(); next(); return list( coords, TokenKind::RSQUARE, termSet ); }
+    case TokenKind::HASH_LPAR:
+      { SourceCoords coords=m_lex.coords(); next(); return vector( coords, TokenKind::RPAR, termSet ); }
 
-    case Token::APOSTR:         return abbrev( m_rsv.sym_quote, termSet );
-    case Token::ACCENT:         return abbrev( m_rsv.sym_quasiquote, termSet );
-    case Token::COMMA:          return abbrev( m_rsv.sym_unquote, termSet );
-    case Token::COMMA_AT:       return abbrev( m_rsv.sym_unquote_splicing, termSet );
-    case Token::HASH_APOSTR:    return abbrev( m_rsv.sym_syntax, termSet );
-    case Token::HASH_ACCENT:    return abbrev( m_rsv.sym_quasisyntax, termSet );
-    case Token::HASH_COMMA:     return abbrev( m_rsv.sym_unsyntax, termSet );
-    case Token::HASH_COMMA_AT:  return abbrev( m_rsv.sym_unsyntax_splicing, termSet );
+    case TokenKind::APOSTR:         return abbrev( m_rsv.sym_quote, termSet );
+    case TokenKind::ACCENT:         return abbrev( m_rsv.sym_quasiquote, termSet );
+    case TokenKind::COMMA:          return abbrev( m_rsv.sym_unquote, termSet );
+    case TokenKind::COMMA_AT:       return abbrev( m_rsv.sym_unquote_splicing, termSet );
+    case TokenKind::HASH_APOSTR:    return abbrev( m_rsv.sym_syntax, termSet );
+    case TokenKind::HASH_ACCENT:    return abbrev( m_rsv.sym_quasisyntax, termSet );
+    case TokenKind::HASH_COMMA:     return abbrev( m_rsv.sym_unsyntax, termSet );
+    case TokenKind::HASH_COMMA_AT:  return abbrev( m_rsv.sym_unsyntax_splicing, termSet );
 
-    case Token::DATUM_COMMENT:
+    case TokenKind::DATUM_COMMENT:
       next();
       read( termSet ); // Ignore the next datum
       return DAT_COM;
 
-    case Token::NESTED_COMMENT_END:
-    case Token::NESTED_COMMENT_START:
+    case TokenKind::NESTED_COMMENT_END:
+    case TokenKind::NESTED_COMMENT_START:
       assert(false);
-    case Token::DOT:
-    case Token::RPAR:
-    case Token::RSQUARE:
-    case Token::NONE:
+    case TokenKind::DOT:
+    case TokenKind::RPAR:
+    case TokenKind::RSQUARE:
+    case TokenKind::NONE:
       // Skip invalid tokens, reporting only the first one
       if (!inError)
       {
-        error( "'%s' isn't allowed here", Token::repr(m_lex.curToken()) );
+        error( "'%s' isn't allowed here", TokenKind::repr(m_lex.curToken()) );
         inError = true;
       }
       if (setContains(termSet,m_lex.curToken()))
@@ -149,11 +149,11 @@ Syntax * SyntaxReader::read ( unsigned termSet )
   }
 }
 
-SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, Token::Enum terminator, unsigned termSet )
+SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, TokenKind::Enum terminator, unsigned termSet )
 {
   ListBuilder lb;
   termSet = setAdd(termSet,terminator);
-  unsigned carTermSet = setAdd(termSet, Token::DOT);
+  unsigned carTermSet = setAdd(termSet, TokenKind::DOT);
 
   lb << coords;
 
@@ -181,7 +181,7 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, Token::Enum termi
 
     lb << car;
 
-    if (m_lex.curToken() == Token::DOT)
+    if (m_lex.curToken() == TokenKind::DOT)
     {
       Syntax * cdr;
 
@@ -196,9 +196,9 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, Token::Enum termi
         next();
       else
       {
-        error( "Expected %s", Token::repr(terminator) );
+        error( "Expected %s", TokenKind::repr(terminator) );
         // skip until terminator
-        assert( setContains(termSet, Token::EOFTOK) ); // all sets should include EOF
+        assert( setContains(termSet, TokenKind::EOFTOK) ); // all sets should include EOF
         for(;;)
         {
           if (m_lex.curToken() == terminator)
@@ -217,7 +217,7 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, Token::Enum termi
   }
 }
 
-SyntaxVector * SyntaxReader::vector ( const SourceCoords & coords, Token::Enum terminator, unsigned termSet )
+SyntaxVector * SyntaxReader::vector ( const SourceCoords & coords, TokenKind::Enum terminator, unsigned termSet )
 {
   Syntax ** vec = NULL;
   unsigned count = 0, size = 0;
@@ -265,7 +265,7 @@ SyntaxVector * SyntaxReader::vector ( const SourceCoords & coords, Token::Enum t
 
 SyntaxPair * SyntaxReader::abbrev ( Symbol * sym, unsigned termSet )
 {
-  SyntaxValue * symdat = new SyntaxValue( SyntaxClass::SYMBOL, m_lex.coords(), sym );
+  SyntaxValue * symdat = new SyntaxValue( SyntaxKind::SYMBOL, m_lex.coords(), sym );
 
   next();
 

@@ -74,7 +74,7 @@ bool equal ( const Mark * a, const Mark * b );
    _MK_ENUM(VECTOR) \
 
 
-struct SyntaxClass
+struct SyntaxKind
 {
   #define _MK_ENUM(name)  name,
   enum Enum
@@ -92,11 +92,11 @@ private:
 class Syntax : public gc
 {
 public:
-  SyntaxClass::Enum const sclass;
+  SyntaxKind::Enum const skind;
   SourceCoords coords;
-  Syntax ( SyntaxClass::Enum dclass_, const SourceCoords & coords_ ) : sclass( dclass_ ), coords( coords_ ) {}
+  Syntax ( SyntaxKind::Enum skind_, const SourceCoords & coords_ ) : skind( skind_ ), coords( coords_ ) {}
 
-  bool isNil () const { return this->sclass == SyntaxClass::NIL; }
+  bool isNil () const { return this->skind == SyntaxKind::NIL; }
 
   virtual Syntax * wrap ( Mark * mark );
 
@@ -128,14 +128,14 @@ public:
     const gc_char * str;
   } u;
 
-  SyntaxValue ( SyntaxClass::Enum dclass_, const SourceCoords & coords_, double real )
-    : Syntax( dclass_, coords_ ) { assert(sclass == SyntaxClass::REAL); u.real = real; }
-  SyntaxValue ( SyntaxClass::Enum dclass_, const SourceCoords & coords_, int64_t integer )
-    : Syntax( dclass_, coords_ ) { assert(sclass == SyntaxClass::INTEGER); u.integer = integer; }
-  SyntaxValue ( SyntaxClass::Enum dclass_, const SourceCoords & coords_, bool vbool )
-    : Syntax( dclass_, coords_ ) { assert(sclass == SyntaxClass::BOOL); u.vbool = vbool; }
-  SyntaxValue ( SyntaxClass::Enum dclass_, const SourceCoords & coords_, const gc_char * str )
-    : Syntax( dclass_, coords_ ) { assert(sclass == SyntaxClass::STR); u.str = str; }
+  SyntaxValue ( SyntaxKind::Enum skind_, const SourceCoords & coords_, double real )
+    : Syntax( skind_, coords_ ) { assert(skind == SyntaxKind::REAL); u.real = real; }
+  SyntaxValue ( SyntaxKind::Enum skind_, const SourceCoords & coords_, int64_t integer )
+    : Syntax( skind_, coords_ ) { assert(skind == SyntaxKind::INTEGER); u.integer = integer; }
+  SyntaxValue ( SyntaxKind::Enum skind_, const SourceCoords & coords_, bool vbool )
+    : Syntax( skind_, coords_ ) { assert(skind == SyntaxKind::BOOL); u.vbool = vbool; }
+  SyntaxValue ( SyntaxKind::Enum skind_, const SourceCoords & coords_, const gc_char * str )
+    : Syntax( skind_, coords_ ) { assert(skind == SyntaxKind::STR); u.str = str; }
 
   virtual void toStream ( std::ostream & os ) const;
   virtual bool equal ( const Syntax * x ) const;
@@ -148,7 +148,7 @@ public:
   Mark * const mark;
 
   SyntaxSymbol ( const SourceCoords & coords_, Symbol * symbol_, Mark * mark_ = NULL )
-    : Syntax( SyntaxClass::SYMBOL, coords_ ), symbol(symbol_), mark(mark_)
+    : Syntax( SyntaxKind::SYMBOL, coords_ ), symbol(symbol_), mark(mark_)
   {}
 
   virtual Syntax * wrap ( Mark * mark );
@@ -163,7 +163,7 @@ public:
   Binding * bnd;
 
   SyntaxBinding ( const SourceCoords & coords_, Binding * bnd )
-    : Syntax( SyntaxClass::BINDING, coords_ ) { this->bnd = bnd; }
+    : Syntax( SyntaxKind::BINDING, coords_ ) { this->bnd = bnd; }
 
   virtual void toStream ( std::ostream & os ) const;
   virtual bool equal ( const Syntax * x ) const;
@@ -178,7 +178,7 @@ public:
   Mark * const mark;
 
   SyntaxPair ( const SourceCoords & coords_, Syntax * car_, Syntax * cdr_, Mark * mark_ = NULL )
-    : Syntax( SyntaxClass::PAIR, coords_ ), m_car(car_), m_cdr(cdr_), mark(mark_)
+    : Syntax( SyntaxKind::PAIR, coords_ ), m_car(car_), m_cdr(cdr_), mark(mark_)
   {
     m_wrappedCar = NULL;
     m_wrappedCdr = NULL;
@@ -206,7 +206,7 @@ public:
   virtual bool equal ( const Syntax * x ) const;
 
 protected:
-  SyntaxPair ( SyntaxClass::Enum sclass, const SourceCoords & coords_, Syntax * car_, Syntax * cdr_ )
+  SyntaxPair ( SyntaxKind::Enum sclass, const SourceCoords & coords_, Syntax * car_, Syntax * cdr_ )
     : Syntax( sclass, coords_ ), m_car(car_), m_cdr(cdr_), mark(NULL)
   {
     m_wrappedCar = NULL;
@@ -217,7 +217,7 @@ protected:
 struct SyntaxNil : public SyntaxPair
 {
   SyntaxNil ( const SourceCoords & coords )
-    : SyntaxPair( SyntaxClass::NIL, coords, NULL, NULL ) {}
+    : SyntaxPair( SyntaxKind::NIL, coords, NULL, NULL ) {}
 
   virtual Syntax * wrap ( Mark * mark );
   virtual bool equal ( const Syntax * x ) const;
@@ -233,7 +233,7 @@ public:
   Mark * const mark;
 
   SyntaxVector ( const SourceCoords & coords_, Syntax ** data_, unsigned len_, Mark * mark_ = NULL )
-    : Syntax( SyntaxClass::VECTOR, coords ), m_data( data_ ), len( len_ ), mark(mark_) {}
+    : Syntax( SyntaxKind::VECTOR, coords ), m_data( data_ ), len( len_ ), mark(mark_) {}
 
   virtual Syntax * wrap ( Mark * mark );
   Syntax* getElement( unsigned i ) const;
@@ -294,14 +294,14 @@ Syntax * syntaxVisitAll ( Syntax * datum, const PRE & pre, const POST & post )
 recur:
   datum = pre( datum );
 
-  if (datum->sclass == SyntaxClass::PAIR)
+  if (datum->skind == SyntaxKind::PAIR)
   {
     SyntaxPair * pair = static_cast<SyntaxPair*>(datum);
     stack.push_back( StackEntry(-1,pair) );
     datum = pair->m_car;
     goto recur;
   }
-  else if (datum->sclass == SyntaxClass::VECTOR)
+  else if (datum->skind == SyntaxKind::VECTOR)
   {
     SyntaxVector * vec = static_cast<SyntaxVector*>(datum);
     if (vec->len > 0)
