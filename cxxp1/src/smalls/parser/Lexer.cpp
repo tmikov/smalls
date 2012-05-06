@@ -243,8 +243,8 @@ void Lexer::_nextToken ( Token & tok )
       {
         m_strBuf.reset();
         m_strBuf.append( '*' );
-        if (scanRemainingIdentifier( tok ))
-          return;
+        scanRemainingIdentifier( tok );
+        return;
       }
       break;
 
@@ -265,9 +265,8 @@ void Lexer::_nextToken ( Token & tok )
     // <string>
     case '"':
       nextChar();
-      if (scanString( tok ))
-        return;
-      break;
+      scanString( tok );
+      return;
 
     // <comment>
     case ';':
@@ -299,8 +298,8 @@ void Lexer::_nextToken ( Token & tok )
         {
           m_strBuf.reset();
           m_strBuf.append( '/' );
-          if (scanRemainingIdentifier( tok ))
-            return;
+          scanRemainingIdentifier( tok );
+          return;
         }
       }
       break;
@@ -309,9 +308,8 @@ void Lexer::_nextToken ( Token & tok )
     // <digit>
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-      if (scanNumber(tok, 3))
-        return;
-      break;
+      scanNumber(tok, 3);
+      return;
 
     case '#':
       nextChar();
@@ -354,9 +352,8 @@ void Lexer::_nextToken ( Token & tok )
 
       case '"': //  character constant
         nextChar();
-        if (scanCharacterConstant( tok ))
-          return;
-        break;
+        scanCharacterConstant( tok );
+        return;
 
       default:
         {
@@ -376,72 +373,59 @@ void Lexer::_nextToken ( Token & tok )
         m_strBuf.reset();
         m_strBuf.append( (char)m_curChar );
         nextChar();
-        if (scanRemainingIdentifier( tok ))
-          return;
+        scanRemainingIdentifier( tok );
+        return;
       }
-      break;
 
     // <peculiar identifier> "+"
     case '+':
       nextChar();
       if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
-        if (scanNumber(tok, 1))
-          return;
+        scanNumber(tok, 1);
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append( '+' );
-        if (scanRemainingIdentifier( tok ))
-          return;
+        scanRemainingIdentifier( tok );
       }
-      break;
+      return;
 
     // <peculiar identifier> "-" "->"
     case '-':
       nextChar();
       if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
-        if (scanNumber(tok, 2))
-          return;
+        scanNumber(tok, 2);
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append( '-' );
-        if (scanRemainingIdentifier( tok ))
-          return;
+        scanRemainingIdentifier( tok );
       }
-      break;
+      return;
 
     // <peculiar identifier> "..."
     case '.':
       nextChar();
       if (isDelimiter(m_curChar))
-      {
         tok.kind( TokenKind::DOT );
-        return;
-      }
       else if (m_curChar >= '0' && m_curChar <= '9')
-      {
-        if (scanNumber(tok, 4))
-          return;
-      }
+        scanNumber(tok, 4);
       else
       {
         m_strBuf.reset();
         m_strBuf.append('.');
-        if (scanRemainingIdentifier( tok ))
-          return;
+        scanRemainingIdentifier( tok );
       }
-      break;
+      return;
 
     // <inline hex escape>
     case '\\':
-      if (scanRemainingIdentifier( tok ))
-        return;
-      break;
+      scanRemainingIdentifier( tok );
+      return;
 
     default:
       if (isWhitespace(m_curChar))
@@ -456,8 +440,8 @@ void Lexer::_nextToken ( Token & tok )
         m_strBuf.reset();
         m_strBuf.appendCodePoint( m_curChar );
         nextChar();
-        if (scanRemainingIdentifier( tok ))
-          return;
+        scanRemainingIdentifier( tok );
+        return;
       }
       else
       {
@@ -533,14 +517,14 @@ exitLoop:;
     error( 0, "EOF in comment started on line %u", nestedCommentStart.line );
 }
 
-bool Lexer::scanCharacterConstant ( Token & tok )
+void Lexer::scanCharacterConstant ( Token & tok )
 {
   if (m_curChar == '"')
   {
     error( 0, "Invalid empty character constant" );
     nextChar();
     tok.integer( ' ' );
-    return true;
+    return;
   }
   int32_t value;
   switch (scanSingleCharacter( value ))
@@ -553,7 +537,7 @@ bool Lexer::scanCharacterConstant ( Token & tok )
     break;
   case TokenKind::EOFTOK:  // eof/error
     tok.integer(' ');
-    return true;
+    return;
   default:
     assert( false );
   }
@@ -568,10 +552,9 @@ bool Lexer::scanCharacterConstant ( Token & tok )
   }
 
   tok.integer( value );
-  return true;
 }
 
-bool Lexer::scanString ( Token & tok )
+void Lexer::scanString ( Token & tok )
 {
   m_strBuf.reset();
 
@@ -606,7 +589,6 @@ exitLoop:
 
   m_strBuf.append( 0 );
   tok.string( m_strBuf.createGCString() );
-  return true;
 }
 
 /**
@@ -779,7 +761,7 @@ uint8_t Lexer::scanOctalEscape ()
   return res;
 }
 
-bool Lexer::scanRemainingIdentifier ( Token & tok )
+void Lexer::scanRemainingIdentifier ( Token & tok )
 {
   for(;;)
   {
@@ -808,7 +790,7 @@ bool Lexer::scanRemainingIdentifier ( Token & tok )
         if (m_inNestedComment)
         {
           tok.kind( TokenKind::NESTED_COMMENT_END );
-          return true;
+          return;
         }
         else
           m_errors->error( m_tokCoords, "Unexpected */" );
@@ -854,16 +836,15 @@ exitLoop:
   if (!isDelimiter(m_curChar))
     error( 0, "Identifier \"%s\" not terminated by a delimiter", name );
 
-  return identifier( tok, name );
+  identifier( tok, name );
 }
 
-bool Lexer::identifier ( Token & tok, const gc_char * name )
+void Lexer::identifier ( Token & tok, const gc_char * name )
 {
   tok.symbol( m_symbolTable.newSymbol( name ) );
-  return true;
 }
 
-bool Lexer::scanNumber ( Token & tok, unsigned state )
+void Lexer::scanNumber ( Token & tok, unsigned state )
 {
   unsigned base = 10;
   bool real = false;
@@ -1044,15 +1025,9 @@ state_4:
   }
 
   if (!real)
-  {
     tok.integer( !err ? valueInteger : 0 );
-    return true;
-  }
   else
-  {
     tok.real( !err ? valueReal : 0.0 / 0.0 );
-    return true;
-  }
 }
 
 bool Lexer::scanUInt ( unsigned base )

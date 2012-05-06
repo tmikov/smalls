@@ -102,15 +102,15 @@ private:
   void _nextToken ( Token & tok );
 
   void scanNestedComment ();
-  bool scanCharacterConstant ( Token & tok );
-  bool scanString ( Token & tok );
+  void scanCharacterConstant ( Token & tok );
+  void scanString ( Token & tok );
   TokenKind::Enum scanSingleCharacter ( int32_t & value );
   int32_t scanUnicodeEscape ( unsigned maxLen );
   uint8_t scanHexEscape ();
   uint8_t scanOctalEscape ();
-  bool scanRemainingIdentifier ( Token & tok );
-  bool identifier ( Token & tok, const gc_char * name );
-  bool scanNumber ( Token & tok, unsigned state=0 );
+  void scanRemainingIdentifier ( Token & tok );
+  void identifier ( Token & tok, const gc_char * name );
+  void scanNumber ( Token & tok, unsigned state=0 );
   bool scanUInt ( unsigned base );
 
   static bool isNewLine ( int32_t ch );
