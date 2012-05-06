@@ -27,6 +27,8 @@
 namespace p1 {
 namespace smalls {
 
+namespace detail {
+
 class ReservedBindings : public gc
 {
 public:
@@ -64,6 +66,8 @@ private:
   static Binding * bind ( Scope * scope, Symbol * sym, ResWord::Enum resCode );
 };
 
+} // namespace detail
+
 class SchemeParser : public gc
 {
 public:
@@ -92,7 +96,7 @@ private:
 
   SymbolTable & m_symbolTable;
   Scope * m_systemScope;
-  ReservedBindings m_rsv;
+  detail::ReservedBindings m_rsv;
   AbstractErrorReporter & m_errors;
 
   Binding * m_unspec;
