@@ -55,9 +55,9 @@ ReservedBindings::ReservedBindings ( SymbolTable & map, Scope * sc ) :
 Binding * ReservedBindings::bind ( Scope * scope, Symbol * sym, ResWord::Enum resCode )
 {
   Binding * res;
-  if (scope->bind( res, sym, BindingKind::RESWORD, SourceCoords() ))
+  if (scope->bind( res, sym, SourceCoords() ))
   {
-    res->u.resWord = resCode;
+    res->bindResWord( resCode );
     return res;
   }
   else
@@ -102,16 +102,15 @@ SchemeParser::SchemeParser ( SymbolTable & symbolTable, AbstractErrorReporter & 
     m_antiMark( new Mark( -1, NULL, NULL ) )
 {
   // Create a synthetic binding for the unspecified value
-  m_unspec = new Binding( m_symbolTable.newSymbol( "#unspecified" ), m_systemScope,
-                          BindingKind::RESWORD, SourceCoords() );
-  m_unspec->u.resWord = ResWord::UNSPECIFIED;
+  m_unspec = new Binding( m_symbolTable.newSymbol( "#unspecified" ), m_systemScope, SourceCoords() );
+  m_unspec->bindResWord( ResWord::UNSPECIFIED );
 
   Binding * orb;
-  m_systemScope->bind( orb, m_symbolTable.newSymbol("or"), BindingKind::MACRO, SourceCoords() );
-  orb->u.macro = new MacroOr( m_systemScope, m_symbolTable );
+  m_systemScope->bind( orb, m_symbolTable.newSymbol("or"), SourceCoords() );
+  orb->bindMacro( new MacroOr( m_systemScope, m_symbolTable ) );
 #if 0
   m_systemScope->bind( orb, m_symbolTable.newSymbol("test"), BindingKind::MACRO, SourceCoords() );
-  orb->u.macro = new MacroTest( m_systemScope, m_symbolTable );
+  orb->m_u.macro = new MacroTest( m_systemScope, m_symbolTable );
 #endif
 }
 
@@ -159,16 +158,16 @@ tail_recursion:
     Syntax * car = pair->car();
     if (Binding * binding = isBinding(car))
     {
-      if (binding->bkind == BindingKind::MACRO)
+      if (binding->kind() == BindingKind::MACRO)
       {
-        datum = expandMacro( ctx, binding->u.macro, pair );
+        datum = expandMacro( ctx, binding->macro(), pair );
         if (!datum) // error?
           return;
         goto tail_recursion;
       }
-      else if (binding->bkind == BindingKind::RESWORD)
+      else if (binding->kind() == BindingKind::RESWORD)
       {
-        switch (binding->u.resWord)
+        switch (binding->resWord())
         {
         case ResWord::BEGIN:
           // splice the body of (begin ...)
@@ -220,13 +219,13 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
   Binding * bnd;
   if (p0->skind == SyntaxKind::SYMBOL)
   {
-    if (bindSyntaxSymbol( bnd, ctx->scope, static_cast<SyntaxSymbol *>(p0), BindingKind::VAR ))
+    if (bindSyntaxSymbol( bnd, ctx->scope, static_cast<SyntaxSymbol *>(p0) ))
     {
-      bnd->u.var = ctx->frame->newVariable( bnd->sym->name );
+      bnd->bindVar( ctx->frame->newVariable( bnd->sym->name ) );
     }
     else
     {
-      error( p0, "'%s' already defined at %s", bnd->sym->name, bnd->defCoords.toString().c_str() );
+      error( p0, "'%s' already defined at %s", bnd->sym->name, bnd->defCoords().toString().c_str() );
       bnd = NULL;
     }
   }
@@ -446,7 +445,7 @@ ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
     BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
     {
       if (defn.first)
-        vars->push_back( defn.first->u.var );
+        vars->push_back( defn.first->var() );
       else
         vars->push_back( ctx->frame->newAnonymous("") );
       values->push_back( makeUnspecified(defn.second) );
@@ -519,8 +518,8 @@ tail_recursion:
   binding:
     if (bnd == m_unspec)
       break; // fall-through to the default case
-    if (bnd->bkind == BindingKind::VAR)
-      return makeListOfAst( new AstVar(expr->coords, bnd->u.var) );
+    if (bnd->kind() == BindingKind::VAR)
+      return makeListOfAst( new AstVar(expr->coords, bnd->var()) );
     else
       error( expr, "Undefined variable '%s'", bnd->sym->name );
     break;
@@ -532,14 +531,14 @@ tail_recursion:
       // Check for reserved words
       if (Binding * bnd = isBinding(pair->car()))
       {
-        if (bnd->bkind == BindingKind::MACRO)
+        if (bnd->kind() == BindingKind::MACRO)
         {
-          expr = expandMacro( ctx, bnd->u.macro, pair );
+          expr = expandMacro( ctx, bnd->macro(), pair );
           if (!expr) // error?
             break;
           goto tail_recursion;
         }
-        else if (bnd->bkind == BindingKind::RESWORD)
+        else if (bnd->kind() == BindingKind::RESWORD)
           return compileResForm( ctx, pair, bnd );
       }
 
@@ -579,7 +578,7 @@ ListOfAst SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * 
  */
 ListOfAst SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair * pair, Binding * bndCar )
 {
-  switch (bndCar->u.resWord)
+  switch (bndCar->resWord())
   {
   case ResWord::BEGIN: return compileBegin( ctx, pair );
   case ResWord::SETBANG: return compileSetBang( ctx, pair );
@@ -652,7 +651,7 @@ ListOfAst SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair
     return makeUnspecified(setPair);
   }
 
-  if (bnd->bkind != BindingKind::VAR)
+  if (bnd->kind() != BindingKind::VAR)
   {
     error( ps[0], "Undefined variable '%s'", bnd->sym->name );
     return makeUnspecified(setPair);
@@ -662,7 +661,7 @@ ListOfAst SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair
   //
   ListOfAst value = compileExpression( ctx, ps[1] );
 
-  return makeListOfAst(new AstSet( setPair->car()->coords, bnd->u.var, value ));
+  return makeListOfAst(new AstSet( setPair->car()->coords, bnd->var(), value ));
 }
 
 ListOfAst SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * ifPair )
@@ -708,9 +707,9 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
   if (p0->skind == SyntaxKind::SYMBOL) // one formal parameter will accept a list of actual parameters
   {
     Binding * bnd;
-    bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(p0), BindingKind::VAR );
-    bnd->u.var = paramFrame->newVariable( bnd->sym->name );
-    listParam = bnd->u.var;
+    bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(p0) );
+    bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+    listParam = bnd->var();
   }
   else if (SyntaxPair * params = isPair(p0)) // a list of formal parameters
   {
@@ -720,10 +719,10 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
       if (curParam->skind == SyntaxKind::SYMBOL)
       {
         Binding * bnd;
-        if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam), BindingKind::VAR ))
+        if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam) ))
         {
-          bnd->u.var = paramFrame->newVariable( bnd->sym->name );
-          vars->push_back( bnd->u.var );
+          bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+          vars->push_back( bnd->var() );
         }
         else
         {
@@ -748,10 +747,10 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
       else
       {
         Binding * bnd;
-        if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam), BindingKind::VAR ))
+        if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam) ))
         {
-          bnd->u.var = paramFrame->newVariable( bnd->sym->name );
-          listParam = bnd->u.var;
+          bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+          listParam = bnd->var();
         }
         else
         {
@@ -865,10 +864,10 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
     if (curParam->skind == SyntaxKind::SYMBOL)
     {
       Binding * bnd;
-      if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam), BindingKind::VAR ))
+      if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam) ))
       {
-        bnd->u.var = paramFrame->newVariable( bnd->sym->name );
-        vars->push_back( bnd->u.var );
+        bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+        vars->push_back( bnd->var() );
       }
       else
       {
@@ -1019,10 +1018,10 @@ bool SchemeParser::needParams ( const char * formName, Syntax * datum, unsigned 
 }
 
 bool SchemeParser::bindSyntaxSymbol (
-    Binding * & res, Scope * scope, SyntaxSymbol * ss, BindingKind::Enum btype
+    Binding * & res, Scope * scope, SyntaxSymbol * ss
   )
 {
-  return scope->bind( res, ss->symbol, btype, ss->coords );
+  return scope->bind( res, ss->symbol, ss->coords );
 }
 
 Binding * SchemeParser::lookupSyntaxSymbol ( SyntaxSymbol * ss )

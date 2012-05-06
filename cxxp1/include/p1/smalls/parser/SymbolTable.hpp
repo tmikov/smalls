@@ -28,6 +28,17 @@
 
 namespace p1 {
 namespace smalls {
+  class Syntax;
+  class AstVariable;
+}}
+
+namespace p1 {
+namespace smalls {
+
+class Binding;
+class Symbol;
+class Scope;
+class SymbolTable;
 
 #define _DEF_RESWORDS \
   _MK_ENUM(NONE) \
@@ -73,11 +84,6 @@ private:
   static const char * s_names[];
 };
 
-class Binding;
-class Symbol;
-class Scope;
-class SymbolTable;
-
 #define _DEF_BIND_TYPES \
   _MK_ENUM(NONE) \
   _MK_ENUM(RESWORD) \
@@ -101,8 +107,12 @@ private:
 class Scope : public gc
 {
 public:
-  Scope ( SymbolTable * symbolTable, Scope * parent_ )
-    : m_symbolTable(symbolTable), parent( parent_ ), level(parent?parent->level+1:-1)
+  SymbolTable * const symbolTable;
+  Scope * const parent;
+  int const level;
+
+  Scope ( SymbolTable * symbolTable_, Scope * parent_ )
+    : symbolTable(symbolTable_), parent( parent_ ), level(parent?parent->level+1:-1)
   {
     m_bindingList = NULL;
     m_active = false;
@@ -114,19 +124,13 @@ public:
     * @param sym
     * @return true if a new symbol was defined, false if it was already present in the scope
     */
-  bool bind ( Binding * & res, Symbol * sym, BindingKind::Enum btype, const SourceCoords & defCoords );
+  bool bind ( Binding * & res, Symbol * sym, const SourceCoords & defCoords );
   Binding * lookupOnlyHere ( Symbol * sym );
   Binding * lookupHereAndUp ( Symbol * sym );
 
   void addToBindingList ( Binding * bnd );
 
   bool isActive () const { return m_active; }
-
-
-public:
-  SymbolTable * const m_symbolTable;
-  Scope * const parent;
-  int const level;
 
 private:
   Binding * m_bindingList; //< linking Binding::prevInScope
@@ -136,8 +140,6 @@ private:
 
   friend class SymbolTable;
 };
-
-class Syntax;
 
 class Macro : public gc
 {
@@ -150,63 +152,85 @@ public:
 class Binding : public gc
 {
 public:
-  Binding ( Symbol * sym_, Scope * scope_, BindingKind::Enum btype_, const SourceCoords & defCoords_ )
-    : sym(sym_), scope(scope_), bkind(btype_), defCoords(defCoords_)
-  {
-    this->prev = NULL;
-  }
-
   Symbol * const sym;
   Scope * const scope;
 
-  const BindingKind::Enum bkind;
+  Binding ( Symbol * sym_, Scope * scope_, const SourceCoords & defCoords_ )
+    : sym(sym_), scope(scope_), m_defCoords(defCoords_)
+  {
+    this->m_prev = NULL;
+    this->m_prevInScope = NULL;
+#ifndef NDEBUG
+    this->m_kind = BindingKind::NONE;
+#endif
+  }
+
+  BindingKind::Enum kind () const { return m_kind; }
+  const SourceCoords & defCoords () const { return m_defCoords; }
+
+  ResWord::Enum resWord () const
+  {
+    assert( m_kind == BindingKind::RESWORD );
+    return m_u.resWord;
+  }
+  AstVariable * var () const
+  {
+    assert( m_kind == BindingKind::VAR );
+    return m_u.var;
+  }
+  Macro * macro () const
+  {
+    assert( m_kind == BindingKind::MACRO );
+    return m_u.macro;
+  }
+
+  void bindResWord ( ResWord::Enum resWord )
+  {
+    assert( m_kind == BindingKind::NONE && "Binding already initialized" );
+    m_kind = BindingKind::RESWORD;
+    m_u.resWord = resWord;
+  }
+  void bindVar ( AstVariable * var )
+  {
+    assert( m_kind == BindingKind::NONE && "Binding already initialized" );
+    m_kind = BindingKind::VAR;
+    m_u.var = var;
+  }
+  void bindMacro ( Macro * macro )
+  {
+    assert( m_kind == BindingKind::NONE && "Binding already initialized" );
+    m_kind = BindingKind::MACRO;
+    m_u.macro = macro;
+  }
+
+private:
+  Binding * m_prev; //< the same symbol in the previous scope
+  Binding * m_prevInScope; //< link to the prev binding in our scope
+  SourceCoords m_defCoords; //< coordinates of the source definition
+
+  BindingKind::Enum m_kind;
   union
   {
     ResWord::Enum resWord;
-    class AstVariable * var;
+    AstVariable * var;
     Macro * macro;
-  } u;
-
-  SourceCoords defCoords; //< coordinates of the source definition
-
-private:
-  Binding * prev; //< the same symbol in the previous scope
-  Binding * prevInScope; //< link to the prev binding in our scope
+  } m_u;
 
   friend class Scope;
   friend class Symbol;
 };
 
-std::ostream & operator << ( std::ostream & os, Binding & bnd );
+std::ostream & operator<< ( std::ostream & os, Binding & bnd );
 
 inline void Scope::addToBindingList ( Binding * bnd )
 {
-  assert( bnd->prevInScope == NULL );
-  bnd->prevInScope = m_bindingList;
+  assert( bnd->m_prevInScope == NULL );
+  bnd->m_prevInScope = m_bindingList;
   m_bindingList = bnd;
 }
 
-
 class Symbol : public gc, public boost::noncopyable
 {
-  Symbol ( const gc_char * name_, uint32_t uid_, Symbol * parentSymbol_ = NULL, uint32_t markStamp_ = 0 )
-    : name( name_ ), uid( uid_ ), parentSymbol( parentSymbol_ ), markStamp( markStamp_ )
-  {
-    top = NULL;
-  }
-
-  void push ( Binding * bind )
-  {
-    bind->prev = this->top;
-    this->top = bind;
-  }
-
-  void pop ( Binding * bnd )
-  {
-    assert( this->top == bnd );
-    this->top = this->top->prev;
-  }
-
 public:
   const gc_char * const name;
   uint32_t const uid; //< different value for each symbol
@@ -219,8 +243,27 @@ public:
   uint32_t const markStamp;
 
 private:
+  Symbol ( const gc_char * name_, uint32_t uid_, Symbol * parentSymbol_ = NULL, uint32_t markStamp_ = 0 )
+    : name( name_ ), uid( uid_ ), parentSymbol( parentSymbol_ ), markStamp( markStamp_ )
+  {
+    m_top = NULL;
+  }
+
+  void push ( Binding * bind )
+  {
+    bind->m_prev = this->m_top;
+    this->m_top = bind;
+  }
+
+  void pop ( Binding * bnd )
+  {
+    assert( this->m_top == bnd );
+    this->m_top = this->m_top->m_prev;
+  }
+
+private:
   /** The currently active binding */
-  Binding * top;
+  Binding * m_top;
 
   friend class SymbolTable;
   friend class Scope;
@@ -237,7 +280,7 @@ public:
 
   Binding * lookup ( const Symbol * sym )
   {
-    return sym->top;
+    return sym->m_top;
   }
 
   Scope * newScope ();

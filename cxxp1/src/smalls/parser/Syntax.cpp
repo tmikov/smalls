@@ -172,7 +172,7 @@ static Symbol * wrapSymbol ( Mark * mark, Symbol * symbol )
   Symbol * parentSymbol = mark->next ? wrapSymbol( mark->next, symbol ) : symbol;
   if (mark->isAntiMark())
     return parentSymbol;
-  return mark->scope->m_symbolTable->newSymbol( parentSymbol, mark->value );
+  return mark->scope->symbolTable->newSymbol( parentSymbol, mark->value );
 }
 
 Syntax * SyntaxSymbol::wrap ( Mark * mark )

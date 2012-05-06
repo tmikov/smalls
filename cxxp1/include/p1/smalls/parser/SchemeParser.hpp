@@ -123,7 +123,7 @@ private:
 
   bool needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp );
 
-  bool bindSyntaxSymbol ( Binding * & res, Scope * scope, SyntaxSymbol * ss, BindingKind::Enum btype );
+  bool bindSyntaxSymbol ( Binding * & res, Scope * scope, SyntaxSymbol * ss );
   Binding * lookupSyntaxSymbol ( SyntaxSymbol * ss );
 
   SyntaxPair * needPair ( const char * formName, Syntax * datum );

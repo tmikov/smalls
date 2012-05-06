@@ -33,7 +33,7 @@ const char * BindingKind::s_names[] =
 };
 #undef _MK_ENUM
 
-bool Scope::bind ( Binding * & res, Symbol * sym, BindingKind::Enum btype, const SourceCoords & defCoords )
+bool Scope::bind ( Binding * & res, Symbol * sym, const SourceCoords & defCoords )
 {
   Binding * bnd;
 
@@ -43,14 +43,14 @@ bool Scope::bind ( Binding * & res, Symbol * sym, BindingKind::Enum btype, const
     return false;
   }
 
-  bnd = new Binding( sym, this, btype, defCoords );
+  bnd = new Binding( sym, this, defCoords );
   addToBindingList( bnd );
   sym->push( bnd );
   res = bnd;
   return true;
 }
 
-std::ostream & operator << ( std::ostream & os, Binding & bnd )
+std::ostream & operator<< ( std::ostream & os, Binding & bnd )
 {
   return os << bnd.sym->name << ':' << bnd.scope->level;
 }
@@ -62,7 +62,7 @@ Binding * Scope::lookupOnlyHere ( Symbol * sym )
 
   int const ourLevel = level;
 
-  for ( Binding * bind = sym->top; bind != NULL; bind = bind->prev )
+  for ( Binding * bind = sym->m_top; bind != NULL; bind = bind->m_prev )
   {
     Scope * const scope = bind->scope;
     if (scope == this)
@@ -83,14 +83,14 @@ Binding * Scope::lookupHereAndUp ( Symbol * sym )
   int const ourLevel = level;
 
   Binding * bind;
-  for ( bind = sym->top; bind != NULL && bind->scope->level > ourLevel; bind = bind->prev )
+  for ( bind = sym->m_top; bind != NULL && bind->scope->level > ourLevel; bind = bind->m_prev )
     {}
   return bind;
 }
 
 void Scope::popBindings()
 {
-  for ( Binding * bnd = m_bindingList; bnd != NULL; bnd = bnd->prevInScope )
+  for ( Binding * bnd = m_bindingList; bnd != NULL; bnd = bnd->m_prevInScope )
     bnd->sym->pop( bnd );
 }
 
