@@ -28,8 +28,13 @@
 
 namespace p1 {
 namespace smalls {
+  class Scope;
+  class Symbol;
+  class Binding;
+}}
 
-class Scope;
+namespace p1 {
+namespace smalls {
 
 struct Mark
 {
@@ -113,9 +118,6 @@ inline std::ostream & operator << ( std::ostream & os, const Syntax & dat )
   dat.toStream(os);
   return os;
 }
-
-class Symbol;
-class Binding;
 
 class SyntaxValue : public Syntax
 {
