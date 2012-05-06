@@ -45,7 +45,7 @@ namespace smalls {
   _MK_ENUM(FIX) \
 
 
-struct AstCode
+struct AstKind
 {
   #define _MK_ENUM(x)  x,
   enum Enum
@@ -59,21 +59,32 @@ private:
   static const char * s_names[];
 };
 
-struct Ast : public gc
+class Ast : public gc
 {
-  AstCode::Enum const code;
-  SourceCoords coords;
-  Ast * prev, * next;
+public:
+  AstKind::Enum const kind;
+  SourceCoords const coords;
 
-  Ast ( AstCode::Enum code_, const SourceCoords & coords_ ) : code(code_), coords(coords_)
+  Ast ( AstKind::Enum kind_, const SourceCoords & coords_ ) : kind(kind_), coords(coords_)
   {
-    this->prev = this->next = NULL;
+    this->m_prev = this->m_next = NULL;
   };
 
   virtual void toStream ( std::ostream & os ) const;
+
+  struct LinkAccessor
+  {
+    static Ast * & prev ( Ast * item ) { return item->m_prev; }
+    static Ast * & next ( Ast * item ) { return item->m_next; }
+    static Ast * prev ( const Ast * item ) { return item->m_prev; }
+    static Ast * next ( const Ast * item ) { return item->m_next; }
+  };
+
+private:
+  Ast * m_prev, * m_next;
 };
 
-typedef p1::LinkedList<Ast> ListOfAst;
+typedef p1::LinkedList<Ast,Ast::LinkAccessor> ListOfAst;
 
 inline ListOfAst makeListOfAst ( Ast * ast )
 {
@@ -90,115 +101,108 @@ inline std::ostream & operator << ( std::ostream & os, const Ast & ast )
   return os;
 }
 
-struct AstVar : public Ast
+class AstVar : public Ast
 {
-  AstVariable * var;
+public:
+  AstVariable * const var;
 
-  AstVar ( const SourceCoords & coords_, AstVariable * var ) : Ast( AstCode::VAR, coords_ )
-  {
-    this->var = var;
-  }
+  AstVar ( const SourceCoords & coords_, AstVariable * var_ )
+    : Ast( AstKind::VAR, coords_ ), var( var_ )
+  {}
 
   virtual void toStream ( std::ostream & os ) const;
 };
 
-struct AstDatum : public Ast
+class AstDatum : public Ast
 {
-  Syntax * datum; // FIXME: should not depend on this
+public:
+  Syntax * const datum; // FIXME: should not depend on this
 
-  AstDatum ( const SourceCoords & coords_, Syntax * datum ) : Ast ( AstCode::DATUM, coords_ )
-  {
-    this->datum = datum;
-  }
+  AstDatum ( const SourceCoords & coords_, Syntax * datum_ )
+    : Ast ( AstKind::DATUM, coords_ ), datum( datum_ )
+  {}
 
   virtual void toStream ( std::ostream & os ) const;
 };
 
-struct AstSet : public Ast
+class AstSet : public Ast
 {
-  AstVariable * target;
-  ListOfAst rvalue;
+public:
+  AstVariable * const target;
+  ListOfAst const rvalue;
 
-  AstSet ( const SourceCoords & coords_, AstVariable * target, const ListOfAst & rvalue )
-    : Ast( AstCode::SET, coords_ )
-  {
-    this->target = target;
-    this->rvalue = rvalue;
-  }
+  AstSet ( const SourceCoords & coords_, AstVariable * target_, const ListOfAst & rvalue_ )
+    : Ast( AstKind::SET, coords_ ), target(target_), rvalue(rvalue_)
+  {}
 
   virtual void toStream ( std::ostream & os ) const;
 };
 
-struct AstApply : public Ast
+class AstApply : public Ast
 {
-  ListOfAst target;
-  VectorOfListOfAst * params;
-  ListOfAst * listParam;
+public:
+  ListOfAst const target;
+  VectorOfListOfAst * const params;
+  ListOfAst * const listParam;
 
   AstApply ( const SourceCoords & coords_,
-             const ListOfAst & target, VectorOfListOfAst * params, ListOfAst * listParam )
-    : Ast( AstCode::APPLY, coords_ )
-  {
-    this->target = target;
-    this->params = params;
-    this->listParam = listParam;
-  }
+             const ListOfAst & target_, VectorOfListOfAst * params_, ListOfAst * listParam_ )
+    : Ast( AstKind::APPLY, coords_ ), target(target_), params(params_), listParam(listParam_)
+  {}
 
   virtual void toStream ( std::ostream & os ) const;
 };
 
-struct AstIf : public Ast
+class AstIf : public Ast
 {
-  ListOfAst cond;
-  ListOfAst thenAst;
-  ListOfAst elseAst;
+public:
+  ListOfAst const cond;
+  ListOfAst const thenAst;
+  ListOfAst const elseAst;
 
   AstIf ( const SourceCoords & coords_,
-          const ListOfAst & cond, const ListOfAst & thenAst, const ListOfAst & elseAst )
-    : Ast( AstCode::IF, coords_ )
-  {
-    this->cond = cond;
-    this->thenAst = thenAst;
-    this->elseAst = elseAst;
-  }
+          const ListOfAst & cond_, const ListOfAst & thenAst_, const ListOfAst & elseAst_ )
+    : Ast( AstKind::IF, coords_ ), cond(cond_),thenAst(thenAst_),elseAst(elseAst_)
+  {}
 
   virtual void toStream ( std::ostream & os ) const;
 };
 
 typedef std::vector<AstVariable *, gc_allocator<AstVariable *> > VectorOfVariable;
 
-struct AstClosure : public Ast
+class AstClosure : public Ast
 {
-  AstFrame * enclosingFrame;
-  VectorOfVariable * params;
-  AstVariable * listParam;
-  AstFrame * paramFrame;
-  AstFrame * bodyFrame;
-  ListOfAst body;
+public:
+  AstFrame * const enclosingFrame;
+  VectorOfVariable * const params;
+  AstVariable * const listParam;
+  AstFrame * const paramFrame;
+  AstFrame * const bodyFrame;
+  ListOfAst const body;
 
   AstClosure (
     const SourceCoords & coords_,
-    AstFrame * enclosingFrame,
-    VectorOfVariable * params,
-    AstVariable * listParam,
-    AstFrame * paramFrame,
-    AstFrame * bodyFrame,
-    const ListOfAst & body
-  ) : Ast( AstCode::CLOSURE, coords_ )
-  {
-    this->enclosingFrame = enclosingFrame;
-    this->params = params;
-    this->listParam = listParam;
-    this->paramFrame = paramFrame;
-    this->bodyFrame = bodyFrame;
-    this->body = body;
-  }
+    AstFrame * enclosingFrame_,
+    VectorOfVariable * params_,
+    AstVariable * listParam_,
+    AstFrame * paramFrame_,
+    AstFrame * bodyFrame_,
+    const ListOfAst & body_
+  ) : Ast( AstKind::CLOSURE, coords_ ),
+      enclosingFrame( enclosingFrame_ ),
+      params( params_ ),
+      listParam( listParam_ ),
+      paramFrame( paramFrame_ ),
+      bodyFrame( bodyFrame_ ),
+      body( body_ )
+  {}
 
   virtual void toStream ( std::ostream & os ) const;
 };
 
-struct AstLet : public Ast
+class AstLet : public Ast
 {
+public:
   AstFrame * enclosingFrame;
   VectorOfVariable * params;
   AstFrame * paramFrame;
@@ -208,59 +212,58 @@ struct AstLet : public Ast
 
   AstLet (
     const SourceCoords & coords_,
-    AstFrame * enclosingFrame,
-    VectorOfVariable * params,
-    AstFrame * paramFrame,
-    AstFrame * bodyFrame,
-    const ListOfAst & body,
-    VectorOfListOfAst * values
-  ) : Ast( AstCode::LET, coords_ )
-  {
-    this->enclosingFrame = enclosingFrame;
-    this->params = params;
-    this->paramFrame = paramFrame;
-    this->bodyFrame = bodyFrame;
-    this->body = body;
-    this->values = values;
-  }
+    AstFrame * enclosingFrame_,
+    VectorOfVariable * params_,
+    AstFrame * paramFrame_,
+    AstFrame * bodyFrame_,
+    const ListOfAst & body_,
+    VectorOfListOfAst * values_
+  ) : Ast( AstKind::LET, coords_ ),
+      enclosingFrame( enclosingFrame_ ),
+      params( params_ ),
+      paramFrame( paramFrame_ ),
+      bodyFrame( bodyFrame_ ),
+      body( body_ ),
+      values( values_ )
+  {}
 
   virtual void toStream ( std::ostream & os ) const;
 
 protected:
   AstLet (
-    AstCode::Enum code,
+    AstKind::Enum code,
     const SourceCoords & coords_,
-    AstFrame * enclosingFrame,
-    VectorOfVariable * params,
-    AstFrame * paramFrame,
-    AstFrame * bodyFrame,
-    const ListOfAst & body,
-    VectorOfListOfAst * values
-  ) : Ast( code, coords_ )
-  {
-    this->enclosingFrame = enclosingFrame;
-    this->params = params;
-    this->paramFrame = paramFrame;
-    this->bodyFrame = bodyFrame;
-    this->body = body;
-    this->values = values;
-  }
+    AstFrame * enclosingFrame_,
+    VectorOfVariable * params_,
+    AstFrame * paramFrame_,
+    AstFrame * bodyFrame_,
+    const ListOfAst & body_,
+    VectorOfListOfAst * values_
+  ) : Ast( code, coords_ ),
+      enclosingFrame( enclosingFrame_ ),
+      params( params_ ),
+      paramFrame( paramFrame_ ),
+      bodyFrame( bodyFrame_ ),
+      body( body_ ),
+      values( values_ )
+  {}
 };
 
 /**
  * A restricted form of let where the variables are unassigned (never modified), and the init
  * expressions are all lambdas.
  */
-struct AstFix : public AstLet
+class AstFix : public AstLet
 {
+public:
   AstFix (
     const SourceCoords & coords_,
-    AstFrame * enclosingFrame,
-    VectorOfVariable * params,
-    AstFrame * paramFrame,
-    AstFrame * bodyFrame,
-    const ListOfAst & body,
-    VectorOfListOfAst * values
+    AstFrame * enclosingFrame_,
+    VectorOfVariable * params_,
+    AstFrame * paramFrame_,
+    AstFrame * bodyFrame_,
+    const ListOfAst & body_,
+    VectorOfListOfAst * values_
   );
 };
 

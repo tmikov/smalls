@@ -25,7 +25,7 @@ namespace p1 {
 namespace smalls {
 
 #define _MK_ENUM(x) #x,
-const char * AstCode::s_names[] =
+const char * AstKind::s_names[] =
 {
   _DEF_AST_CODES
 };
@@ -54,24 +54,24 @@ std::ostream & operator<< ( std::ostream & os, const ListOfAst & lst )
 
 void Ast::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << ')';
+  os << '(' << AstKind::name( this->kind ) << ')';
 }
 
 void AstVar::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << ' ' << *this->var << ')';
+  os << '(' << AstKind::name( this->kind ) << ' ' << *this->var << ')';
 }
 
 void AstDatum::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << ' ';
+  os << '(' << AstKind::name( this->kind ) << ' ';
   this->datum->toStream( os );
   os << ')';
 }
 
 void AstSet::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << '\n'
+  os << '(' << AstKind::name( this->kind ) << '\n'
      << OStreamSetIndent(+4)
      << OStreamIndent() << *this->target << '\n'
      << OStreamIndent() << this->rvalue << ')'
@@ -80,7 +80,7 @@ void AstSet::toStream ( std::ostream & os ) const
 
 void AstApply::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << ' ' << this->target << ' ';
+  os << '(' << AstKind::name( this->kind ) << ' ' << this->target << ' ';
 
   BOOST_FOREACH( ListOfAst & lst, *this->params )
     os << lst << ' ';
@@ -95,7 +95,7 @@ void AstApply::toStream ( std::ostream & os ) const
 
 void AstIf::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << '\n'
+  os << '(' << AstKind::name( this->kind ) << '\n'
      << OStreamSetIndent(+4)
      << OStreamIndent() << this->cond << '\n'
      << OStreamIndent() << this->thenAst << '\n'
@@ -105,7 +105,7 @@ void AstIf::toStream ( std::ostream & os ) const
 
 void AstClosure::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << ' ';
+  os << '(' << AstKind::name( this->kind ) << ' ';
 
   os << '(';
   unsigned c = 0;
@@ -128,7 +128,7 @@ void AstClosure::toStream ( std::ostream & os ) const
 
 void AstLet::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstCode::name( this->code ) << OStreamSetIndent(+4);
+  os << '(' << AstKind::name( this->kind ) << OStreamSetIndent(+4);
 
   os << '\n'<< OStreamIndent() << '(' << OStreamSetIndent(+4);
 
@@ -153,7 +153,7 @@ AstFix::AstFix (
   const ListOfAst & body,
   VectorOfListOfAst * values
 ) : AstLet(
-      AstCode::FIX,
+      AstKind::FIX,
       coords_,
       enclosingFrame,
       params,
@@ -167,7 +167,7 @@ AstFix::AstFix (
   BOOST_FOREACH( ListOfAst & init, *values )
   {
     assert( !init.empty() );
-    assert( init.first()->code == AstCode::CLOSURE );
+    assert( init.first()->kind == AstKind::CLOSURE );
   }
 #endif
 }

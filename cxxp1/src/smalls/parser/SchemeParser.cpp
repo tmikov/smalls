@@ -415,7 +415,7 @@ ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
     }
 
     if (body.empty())
-      body += new Ast(AstCode::UNSPECIFIED, SourceCoords());
+      body += new Ast(AstKind::UNSPECIFIED, SourceCoords());
 
     return body;
   }
@@ -477,7 +477,7 @@ ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
       coords = ctx->defnList.front().second->coords;
 
     if (body.empty())
-      body += new Ast(AstCode::UNSPECIFIED, coords);
+      body += new Ast(AstKind::UNSPECIFIED, coords);
 
     return makeListOfAst(new AstLet(
       coords,
@@ -677,7 +677,7 @@ ListOfAst SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * if
   ListOfAst elseAst;
 
   if (restp->isNil())
-    elseAst += new Ast(AstCode::UNSPECIFIED, restp->coords );
+    elseAst += new Ast(AstKind::UNSPECIFIED, restp->coords );
   else
   {
     elseAst = compileExpression( ctx, restp->car() );
@@ -961,7 +961,7 @@ bool SchemeParser::splitLetParams ( Syntax * p0, DatumList & varDatums, DatumLis
 
 ListOfAst SchemeParser::makeUnspecified ( Syntax * where )
 {
-  return makeListOfAst( new Ast(AstCode::UNSPECIFIED, where->coords) );
+  return makeListOfAst( new Ast(AstKind::UNSPECIFIED, where->coords) );
 }
 
 bool SchemeParser::needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp )
