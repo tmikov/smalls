@@ -72,7 +72,7 @@ void SyntaxReader::error ( const gc_char * msg, ... )
 {
   std::va_list ap;
   va_start( ap, msg );
-  m_lex.errorReporter().error( m_lex.coords(), vformatGCStr( msg, ap ) );
+  m_lex.errorReporter().error( m_tok.coords(), vformatGCStr( msg, ap ) );
   va_end( ap );
 }
 
@@ -97,22 +97,22 @@ Syntax * SyntaxReader::read ( unsigned termSet )
   for(;;)
   {
     Syntax * res;
-    switch (m_lex.curToken())
+    switch (m_tok.kind())
     {
     case TokenKind::EOFTOK: return DAT_EOF;
 
-    case TokenKind::BOOL:    res = new SyntaxValue( SyntaxKind::BOOL,    m_lex.coords(), m_lex.valueBool()    ); next(); return res;
-    case TokenKind::INTEGER: res = new SyntaxValue( SyntaxKind::INTEGER, m_lex.coords(), m_lex.valueInteger() ); next(); return res;
-    case TokenKind::REAL:    res = new SyntaxValue( SyntaxKind::REAL,    m_lex.coords(), m_lex.valueReal()    ); next(); return res;
-    case TokenKind::STR:     res = new SyntaxValue( SyntaxKind::STR,     m_lex.coords(), m_lex.valueString()  ); next(); return res;
-    case TokenKind::SYMBOL:  res = new SyntaxSymbol( m_lex.coords(), m_lex.valueSymbol()  ); next(); return res;
+    case TokenKind::BOOL:    res = new SyntaxValue( SyntaxKind::BOOL,    m_tok.coords(), m_tok.vbool() ); next(); return res;
+    case TokenKind::INTEGER: res = new SyntaxValue( SyntaxKind::INTEGER, m_tok.coords(), m_tok.integer() ); next(); return res;
+    case TokenKind::REAL:    res = new SyntaxValue( SyntaxKind::REAL,    m_tok.coords(), m_tok.real()    ); next(); return res;
+    case TokenKind::STR:     res = new SyntaxValue( SyntaxKind::STR,     m_tok.coords(), m_tok.string()  ); next(); return res;
+    case TokenKind::SYMBOL:  res = new SyntaxSymbol( m_tok.coords(), m_tok.symbol()  ); next(); return res;
 
     case TokenKind::LPAR:
-      { SourceCoords coords=m_lex.coords(); next(); return list( coords, TokenKind::RPAR, termSet ); }
+      { SourceCoords coords=m_tok.coords(); next(); return list( coords, TokenKind::RPAR, termSet ); }
     case TokenKind::LSQUARE:
-      { SourceCoords coords=m_lex.coords(); next(); return list( coords, TokenKind::RSQUARE, termSet ); }
+      { SourceCoords coords=m_tok.coords(); next(); return list( coords, TokenKind::RSQUARE, termSet ); }
     case TokenKind::HASH_LPAR:
-      { SourceCoords coords=m_lex.coords(); next(); return vector( coords, TokenKind::RPAR, termSet ); }
+      { SourceCoords coords=m_tok.coords(); next(); return vector( coords, TokenKind::RPAR, termSet ); }
 
     case TokenKind::APOSTR:         return abbrev( m_rsv.sym_quote, termSet );
     case TokenKind::ACCENT:         return abbrev( m_rsv.sym_quasiquote, termSet );
@@ -138,11 +138,11 @@ Syntax * SyntaxReader::read ( unsigned termSet )
       // Skip invalid tokens, reporting only the first one
       if (!inError)
       {
-        error( "'%s' isn't allowed here", TokenKind::repr(m_lex.curToken()) );
+        error( "'%s' isn't allowed here", TokenKind::repr(m_tok.kind()) );
         inError = true;
       }
-      if (setContains(termSet,m_lex.curToken()))
-        return new SyntaxNil(m_lex.coords());
+      if (setContains(termSet,m_tok.kind()))
+        return new SyntaxNil(m_tok.coords());
       next();
       break;
     }
@@ -164,9 +164,9 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, TokenKind::Enum t
     // Check for end of list. It is complicated by having to skip DATUM_COMMENT-s
     do
     {
-      if (m_lex.curToken() == terminator)
+      if (m_tok.kind() == terminator)
       {
-        lb << m_lex.coords();
+        lb << m_tok.coords();
         next();
         return lb.toList();
       }
@@ -181,7 +181,7 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, TokenKind::Enum t
 
     lb << car;
 
-    if (m_lex.curToken() == TokenKind::DOT)
+    if (m_tok.kind() == TokenKind::DOT)
     {
       Syntax * cdr;
 
@@ -192,7 +192,7 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, TokenKind::Enum t
         return lb.toList();
       }
 
-      if (m_lex.curToken() == terminator)
+      if (m_tok.kind() == terminator)
         next();
       else
       {
@@ -201,12 +201,12 @@ SyntaxPair * SyntaxReader::list ( const SourceCoords & coords, TokenKind::Enum t
         assert( setContains(termSet, TokenKind::EOFTOK) ); // all sets should include EOF
         for(;;)
         {
-          if (m_lex.curToken() == terminator)
+          if (m_tok.kind() == terminator)
           {
             next();
             break;
           }
-          if (setContains(termSet, m_lex.curToken()))
+          if (setContains(termSet, m_tok.kind()))
             break;
           next();
         }
@@ -223,7 +223,7 @@ SyntaxVector * SyntaxReader::vector ( const SourceCoords & coords, TokenKind::En
   unsigned count = 0, size = 0;
   termSet = setAdd(termSet,terminator);
 
-  while (m_lex.curToken() != terminator)
+  while (m_tok.kind() != terminator)
   {
     Syntax * elem;
     if ( (elem = read( termSet )) == DAT_COM) // skip DATUM_COMMENT-s
@@ -265,7 +265,7 @@ SyntaxVector * SyntaxReader::vector ( const SourceCoords & coords, TokenKind::En
 
 SyntaxPair * SyntaxReader::abbrev ( Symbol * sym, unsigned termSet )
 {
-  SyntaxValue * symdat = new SyntaxValue( SyntaxKind::SYMBOL, m_lex.coords(), sym );
+  SyntaxValue * symdat = new SyntaxValue( SyntaxKind::SYMBOL, m_tok.coords(), sym );
 
   next();
 

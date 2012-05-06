@@ -22,30 +22,12 @@
 using namespace p1;
 using namespace p1::smalls;
 
-#define _MK_ENUM(name,repr)  #name,
-const char * TokenKind::s_names[] =
-{
-  _DEF_TOKENS
-};
-#undef _MK_ENUM
-
-#define _MK_ENUM(name,repr)  repr,
-const char * TokenKind::s_reprs[] =
-{
-  _DEF_TOKENS
-};
-#undef _MK_ENUM
-
-
 Lexer::Lexer ( FastCharInput & in, const gc_char * fileName, SymbolTable & symbolTable, AbstractErrorReporter & errors )
   : m_fileName( fileName ), m_symbolTable( symbolTable ), m_errors( &errors ),
     m_tokCoords( fileName, 0, 0 ), m_streamErrors( *this ), m_decoder( in, m_streamErrors )
 {
   m_curChar = 0;
-  m_curToken = TokenKind::NONE;
   m_inNestedComment = false;
-  m_valueString = NULL;
-  m_valueSymbol = NULL;
 
   m_lineOffset = 0;
   m_line = 1;
@@ -227,23 +209,21 @@ static int baseDigitToInt ( int32_t ch )
   return ch <= '9' ? ch - '0'  : ch - ('a' - 10);
 }
 
-TokenKind::Enum Lexer::_nextToken ()
+void Lexer::_nextToken ( Token & tok )
 {
   for(;;)
   {
-    TokenKind::Enum res;
-    saveCoords();
+    saveCoords( tok );
     switch (m_curChar)
     {
-    case -1:
-      return TokenKind::EOFTOK;
+    case -1: tok.kind( TokenKind::EOFTOK ); return;
 
-    case '(': nextChar(); return TokenKind::LPAR;
-    case ')': nextChar(); return TokenKind::RPAR;
-    case '[': nextChar(); return TokenKind::LSQUARE;
-    case ']': nextChar(); return TokenKind::RSQUARE;
-    case '\'': nextChar(); return TokenKind::APOSTR;
-    case '`': nextChar(); return TokenKind::ACCENT;
+    case '(': nextChar(); tok.kind( TokenKind::LPAR ); return;
+    case ')': nextChar(); tok.kind( TokenKind::RPAR ); return;
+    case '[': nextChar(); tok.kind( TokenKind::LSQUARE ); return;
+    case ']': nextChar(); tok.kind( TokenKind::RSQUARE ); return;
+    case '\'': nextChar(); tok.kind( TokenKind::APOSTR ); return;
+    case '`': nextChar(); tok.kind( TokenKind::ACCENT ); return;
 
     // nested commend end handling.
     case '*':
@@ -252,7 +232,10 @@ TokenKind::Enum Lexer::_nextToken ()
       {
         nextChar();
         if (m_inNestedComment)
-          return TokenKind::NESTED_COMMENT_END;
+        {
+          tok.kind( TokenKind::NESTED_COMMENT_END );
+          return;
+        }
         else
           m_errors->error( m_tokCoords, "Unexpected */" );
       }
@@ -260,8 +243,8 @@ TokenKind::Enum Lexer::_nextToken ()
       {
         m_strBuf.reset();
         m_strBuf.append( '*' );
-        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-          return res;
+        if (scanRemainingIdentifier( tok ))
+          return;
       }
       break;
 
@@ -270,16 +253,20 @@ TokenKind::Enum Lexer::_nextToken ()
       if (m_curChar == '@')
       {
         nextChar();
-        return TokenKind::COMMA_AT;
+        tok.kind( TokenKind::COMMA_AT );
+        return;
       }
       else
-        return TokenKind::COMMA;
+      {
+        tok.kind( TokenKind::COMMA );
+        return;
+      }
 
     // <string>
     case '"':
       nextChar();
-      if ( (res = scanString()) != TokenKind::NONE)
-        return res;
+      if (scanString( tok ))
+        return;
       break;
 
     // <comment>
@@ -303,14 +290,17 @@ TokenKind::Enum Lexer::_nextToken ()
           if (!m_inNestedComment)
             scanNestedComment();
           else
-            return TokenKind::NESTED_COMMENT_START;
+          {
+            tok.kind( TokenKind::NESTED_COMMENT_START );
+            return;
+          }
         }
         else
         {
           m_strBuf.reset();
           m_strBuf.append( '/' );
-          if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-            return res;
+          if (scanRemainingIdentifier( tok ))
+            return;
         }
       }
       break;
@@ -319,8 +309,8 @@ TokenKind::Enum Lexer::_nextToken ()
     // <digit>
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-      if ( (res = scanNumber(3)) != TokenKind::NONE)
-        return res;
+      if (scanNumber(tok, 3))
+        return;
       break;
 
     case '#':
@@ -329,38 +319,43 @@ TokenKind::Enum Lexer::_nextToken ()
       {
       case ';': // #; datum comment
         nextChar();
-        return TokenKind::DATUM_COMMENT;
+        tok.kind( TokenKind::DATUM_COMMENT );
+        return;
 
-      case '(':  /* #( */ nextChar(); return TokenKind::HASH_LPAR;
-      case '\'': /* #' */ nextChar(); return TokenKind::HASH_APOSTR;
-      case '`':  /* #` */ nextChar(); return TokenKind::HASH_ACCENT;
+      case '(':  /* #( */ nextChar(); tok.kind( TokenKind::HASH_LPAR ); return;
+      case '\'': /* #' */ nextChar(); tok.kind( TokenKind::HASH_APOSTR ); return;
+      case '`':  /* #` */ nextChar(); tok.kind( TokenKind::HASH_ACCENT ); return;
       case ',':  /* #, #,@ */
         nextChar();
         if (m_curChar == '@') // #,@
         {
           nextChar();
-          return TokenKind::HASH_COMMA_AT;
+          tok.kind( TokenKind::HASH_COMMA_AT );
+          return;
         }
         else
-          return TokenKind::HASH_COMMA;
+        {
+          tok.kind( TokenKind::HASH_COMMA );
+          return;
+        }
 
       case 't': case 'T': // #t #T
         nextChar();
         if (!isDelimiter(m_curChar))
           error( 0, "Bad #x form" );
-        m_valueBool = true;
-        return TokenKind::BOOL;
+        tok.vbool( true );
+        return;
       case 'f': case 'F': // #f #F
         nextChar();
         if (!isDelimiter(m_curChar))
           error( 0, "Bad #x form" );
-        m_valueBool = false;
-        return TokenKind::BOOL;
+        tok.vbool( false );
+        return;
 
       case '"': //  character constant
         nextChar();
-        if ( (res = scanCharacterConstant()) != TokenKind::NONE)
-          return res;
+        if (scanCharacterConstant( tok ))
+          return;
         break;
 
       default:
@@ -381,8 +376,8 @@ TokenKind::Enum Lexer::_nextToken ()
         m_strBuf.reset();
         m_strBuf.append( (char)m_curChar );
         nextChar();
-        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-          return res;
+        if (scanRemainingIdentifier( tok ))
+          return;
       }
       break;
 
@@ -391,15 +386,15 @@ TokenKind::Enum Lexer::_nextToken ()
       nextChar();
       if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
-        if ( (res = scanNumber(1)) != TokenKind::NONE)
-          return res;
+        if (scanNumber(tok, 1))
+          return;
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append( '+' );
-        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-          return res;
+        if (scanRemainingIdentifier( tok ))
+          return;
       }
       break;
 
@@ -408,15 +403,15 @@ TokenKind::Enum Lexer::_nextToken ()
       nextChar();
       if ((m_curChar >= '0' && m_curChar <= '9') || m_curChar == '.')
       {
-        if ( (res = scanNumber(2)) != TokenKind::NONE)
-          return res;
+        if (scanNumber(tok, 2))
+          return;
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append( '-' );
-        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-          return res;
+        if (scanRemainingIdentifier( tok ))
+          return;
       }
       break;
 
@@ -424,25 +419,28 @@ TokenKind::Enum Lexer::_nextToken ()
     case '.':
       nextChar();
       if (isDelimiter(m_curChar))
-        return TokenKind::DOT;
+      {
+        tok.kind( TokenKind::DOT );
+        return;
+      }
       else if (m_curChar >= '0' && m_curChar <= '9')
       {
-        if ( (res = scanNumber(4)) != TokenKind::NONE)
-          return res;
+        if (scanNumber(tok, 4))
+          return;
       }
       else
       {
         m_strBuf.reset();
         m_strBuf.append('.');
-        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-          return res;
+        if (scanRemainingIdentifier( tok ))
+          return;
       }
       break;
 
     // <inline hex escape>
     case '\\':
-      if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-        return res;
+      if (scanRemainingIdentifier( tok ))
+        return;
       break;
 
     default:
@@ -458,8 +456,8 @@ TokenKind::Enum Lexer::_nextToken ()
         m_strBuf.reset();
         m_strBuf.appendCodePoint( m_curChar );
         nextChar();
-        if ( (res = scanRemainingIdentifier()) != TokenKind::NONE)
-          return res;
+        if (scanRemainingIdentifier( tok ))
+          return;
       }
       else
       {
@@ -492,6 +490,7 @@ NullReporter s_nullReporter;
  */
 void Lexer::scanNestedComment ()
 {
+  Token tok;
   SourceCoords nestedCommentStart( m_tokCoords );
 
   assert( !m_inNestedComment );
@@ -504,7 +503,7 @@ void Lexer::scanNestedComment ()
     int level = 1;
     for(;;)
     {
-      switch (nextToken())
+      switch (nextToken( tok ))
       {
       case TokenKind::NESTED_COMMENT_START:
         ++level;
@@ -530,30 +529,31 @@ exitLoop:;
   m_errors = saveReporter;
   m_inNestedComment = false;
 
-  if (m_curToken == TokenKind::EOFTOK)
+  if (tok.kind() == TokenKind::EOFTOK)
     error( 0, "EOF in comment started on line %u", nestedCommentStart.line );
 }
 
-TokenKind::Enum Lexer::scanCharacterConstant ()
+bool Lexer::scanCharacterConstant ( Token & tok )
 {
   if (m_curChar == '"')
   {
     error( 0, "Invalid empty character constant" );
     nextChar();
-    m_valueInteger = ' ';
-    return TokenKind::INTEGER;
+    tok.integer( ' ' );
+    return true;
   }
-  switch (scanSingleCharacter())
+  int32_t value;
+  switch (scanSingleCharacter( value ))
   {
   case TokenKind::INTEGER: // 8-bit character
   case TokenKind::STR:     // Unicode codepoint
     break;
   case TokenKind::NONE:    // error
-    m_valueInteger = ' ';
+    value = ' ';
     break;
   case TokenKind::EOFTOK:  // eof/error
-    m_valueInteger = ' ';
-    return TokenKind::INTEGER;
+    tok.integer(' ');
+    return true;
   default:
     assert( false );
   }
@@ -567,10 +567,11 @@ TokenKind::Enum Lexer::scanCharacterConstant ()
       error( 0, "Character constant not followed by a delimiter" );
   }
 
-  return TokenKind::INTEGER;
+  tok.integer( value );
+  return true;
 }
 
-TokenKind::Enum Lexer::scanString ()
+bool Lexer::scanString ( Token & tok )
 {
   m_strBuf.reset();
 
@@ -581,13 +582,14 @@ TokenKind::Enum Lexer::scanString ()
       nextChar();
       break;
     }
-    switch (scanSingleCharacter())
+    int32_t value;
+    switch (scanSingleCharacter( value ))
     {
     case TokenKind::INTEGER:
-      m_strBuf.append( (char)m_valueInteger );
+      m_strBuf.append( (char)value );
       break;
     case TokenKind::STR:
-      m_strBuf.appendCodePoint( (int32_t)m_valueInteger );
+      m_strBuf.appendCodePoint( (int32_t)value );
       break;
     case TokenKind::EOFTOK:
       goto exitLoop;
@@ -603,12 +605,12 @@ exitLoop:
     error( 0, "String not followed by a delimiter" );
 
   m_strBuf.append( 0 );
-  m_valueString = m_strBuf.createGCString();
-  return TokenKind::STR;
+  tok.string( m_strBuf.createGCString() );
+  return true;
 }
 
 /**
- * Process one character and store it in m_valueInteger. The return value:
+ * Process one character and store it in {value}. The return value:
  * <ul>
  * <li>Token::EOFTOK - stop processing the string constant (we reached EOF, LF)</li>
  * <li>Token::NONE - error handling this character
@@ -616,7 +618,7 @@ exitLoop:
  * <li>Token::STRING - a 32-bit validated Unicode codepoint
  * </ul>
  */
-TokenKind::Enum Lexer::scanSingleCharacter ()
+TokenKind::Enum Lexer::scanSingleCharacter ( int32_t & value )
 {
 loop: // We loop only if we encounter \ LF sequence.
   if (m_curChar < 0)
@@ -640,30 +642,30 @@ loop: // We loop only if we encounter \ LF sequence.
               m_tokCoords.line, m_tokCoords.column );
       return TokenKind::EOFTOK;
 
-    case 'a': m_valueInteger = '\a'; nextChar(); return TokenKind::INTEGER;
-    case 'b': m_valueInteger = '\b'; nextChar(); return TokenKind::INTEGER;
-    case 't': m_valueInteger = '\t'; nextChar(); return TokenKind::INTEGER;
-    case 'n': m_valueInteger = '\n'; nextChar(); return TokenKind::INTEGER;
-    case 'v': m_valueInteger = '\v'; nextChar(); return TokenKind::INTEGER;
-    case 'f': m_valueInteger = '\f'; nextChar(); return TokenKind::INTEGER;
-    case 'r': m_valueInteger = '\r'; nextChar(); return TokenKind::INTEGER;
-    case '"': m_valueInteger = '"'; nextChar();  return TokenKind::INTEGER;
-    case '\\': m_valueInteger = '\\'; nextChar(); return TokenKind::INTEGER;
+    case 'a': value = '\a'; nextChar(); return TokenKind::INTEGER;
+    case 'b': value = '\b'; nextChar(); return TokenKind::INTEGER;
+    case 't': value = '\t'; nextChar(); return TokenKind::INTEGER;
+    case 'n': value = '\n'; nextChar(); return TokenKind::INTEGER;
+    case 'v': value = '\v'; nextChar(); return TokenKind::INTEGER;
+    case 'f': value = '\f'; nextChar(); return TokenKind::INTEGER;
+    case 'r': value = '\r'; nextChar(); return TokenKind::INTEGER;
+    case '"': value = '"'; nextChar();  return TokenKind::INTEGER;
+    case '\\': value = '\\'; nextChar(); return TokenKind::INTEGER;
 
     case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
-      m_valueInteger = scanOctalEscape();
+      value = scanOctalEscape();
       return TokenKind::INTEGER;
     case 'x':
       nextChar();
-      m_valueInteger = scanHexEscape();
+      value = scanHexEscape();
       return TokenKind::INTEGER;
     case 'u':
       nextChar();
-      m_valueInteger = scanUnicodeEscape(4);
+      value = scanUnicodeEscape(4);
       return TokenKind::STR;
     case 'U':
       nextChar();
-      m_valueInteger = scanUnicodeEscape(8);
+      value = scanUnicodeEscape(8);
       return TokenKind::STR;
 
     default:
@@ -697,7 +699,7 @@ loop: // We loop only if we encounter \ LF sequence.
   }
   else
   {
-    m_valueInteger =  m_curChar;
+    value =  m_curChar;
     nextChar();
     return TokenKind::STR;
   }
@@ -777,7 +779,7 @@ uint8_t Lexer::scanOctalEscape ()
   return res;
 }
 
-TokenKind::Enum Lexer::scanRemainingIdentifier ()
+bool Lexer::scanRemainingIdentifier ( Token & tok )
 {
   for(;;)
   {
@@ -804,7 +806,10 @@ TokenKind::Enum Lexer::scanRemainingIdentifier ()
       {
         nextChar();
         if (m_inNestedComment)
-          return TokenKind::NESTED_COMMENT_END;
+        {
+          tok.kind( TokenKind::NESTED_COMMENT_END );
+          return true;
+        }
         else
           m_errors->error( m_tokCoords, "Unexpected */" );
       }
@@ -849,16 +854,16 @@ exitLoop:
   if (!isDelimiter(m_curChar))
     error( 0, "Identifier \"%s\" not terminated by a delimiter", name );
 
-  return identifier( name );
+  return identifier( tok, name );
 }
 
-TokenKind::Enum Lexer::identifier ( const gc_char * name )
+bool Lexer::identifier ( Token & tok, const gc_char * name )
 {
-  m_valueSymbol = m_symbolTable.newSymbol( name );
-  return TokenKind::SYMBOL;
+  tok.symbol( m_symbolTable.newSymbol( name ) );
+  return true;
 }
 
-TokenKind::Enum Lexer::scanNumber ( unsigned state )
+bool Lexer::scanNumber ( Token & tok, unsigned state )
 {
   unsigned base = 10;
   bool real = false;
@@ -1012,12 +1017,14 @@ state_4:
     m_errors->error( m_tokCoords, "Invalid number" );
   }
 
+  int64_t valueInteger;
+  double valueReal;
   if (!err)
   {
     if (!real)
     {
       errno = 0;
-      m_valueInteger = std::strtoll(m_strBuf.buf(),NULL,base);
+      valueInteger = std::strtoll(m_strBuf.buf(),NULL,base);
       if (errno != 0)
       {
         m_errors->error( m_tokCoords, "Integer constant overflow" );
@@ -1027,7 +1034,7 @@ state_4:
     else
     {
       errno = 0;
-      m_valueReal = std::strtod(m_strBuf.buf(),NULL);
+      valueReal = std::strtod(m_strBuf.buf(),NULL);
       if (errno != 0)
       {
         m_errors->error( m_tokCoords, "Floating point constant overflow" );
@@ -1038,15 +1045,13 @@ state_4:
 
   if (!real)
   {
-    if (err)
-      m_valueInteger = 0;
-    return TokenKind::INTEGER;
+    tok.integer( !err ? valueInteger : 0 );
+    return true;
   }
   else
   {
-    if (err)
-      m_valueReal = 0.0 / 0.0;
-    return TokenKind::REAL;
+    tok.real( !err ? valueReal : 0.0 / 0.0 );
+    return true;
   }
 }
 

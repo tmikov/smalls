@@ -78,7 +78,8 @@ public:
 
 static void validate ( SymbolTable & map, ErrorReporter & err, Syntax * d )
 {
-  CPPUNIT_ASSERT( !err.haveErr() );
+  if (err.err)
+  CPPUNIT_ASSERT( !err.haveErr() && "in validate" );
 
   std::stringstream st;
   st << *d;
@@ -90,7 +91,7 @@ static void validate ( SymbolTable & map, ErrorReporter & err, Syntax * d )
   SyntaxReader parser( lex );
 
   Syntax * d1 = parser.parseDatum();
-  CPPUNIT_ASSERT( !err.haveErr() );
+  CPPUNIT_ASSERT( !err.haveErr() && "in validate 2" );
   CPPUNIT_ASSERT( d->equal(d1) );
 
   std::stringstream st1;
@@ -149,7 +150,7 @@ void TestSyntaxReader::testParser ( )
   CPPUNIT_ASSERT( SyntaxKind::PAIR==d->skind );
   validate( map, err, d );
 
-  CPPUNIT_ASSERT( !err.haveErr() );
+  CPPUNIT_ASSERT( !err.haveErr() && "Before last error" );
   d = parser.parseDatum();
   CPPUNIT_ASSERT( err.haveErr() );
 }

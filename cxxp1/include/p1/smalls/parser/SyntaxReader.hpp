@@ -67,12 +67,13 @@ public:
   Syntax * const DAT_COM;
 private:
   Lexer & m_lex;
+  Token m_tok;
   ReservedSymbols m_rsv;
   SourceCoords m_coords;
 
   TokenKind::Enum next ()
   {
-    return m_lex.nextToken();
+    return m_lex.nextToken( m_tok );
   }
 
   Syntax * readSkipDatCom ( unsigned termSet );

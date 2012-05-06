@@ -18,6 +18,7 @@
 #ifndef P1_SMALLS_PARSER_LEXER_HPP
 #define P1_SMALLS_PARSER_LEXER_HPP
 
+#include "Token.hpp"
 #include "SymbolTable.hpp"
 #include "detail/StringCollector.hpp"
 #include "p1/smalls/common/AbstractErrorReporter.hpp"
@@ -25,47 +26,6 @@
 
 namespace p1 {
 namespace smalls {
-
-#define _DEF_TOKENS \
-   _MK_ENUM(NONE,"<NONE>") \
-   _MK_ENUM(EOFTOK,"<EOF>") \
-   _MK_ENUM(SYMBOL,"symbol") \
-   _MK_ENUM(BOOL,"#t or #f") \
-   _MK_ENUM(REAL,"real") \
-   _MK_ENUM(INTEGER,"integer") \
-   _MK_ENUM(STR,"string") \
-   _MK_ENUM(LPAR,"(") _MK_ENUM(RPAR,")") \
-   _MK_ENUM(LSQUARE,"[") _MK_ENUM(RSQUARE,"]") \
-   _MK_ENUM(HASH_LPAR,"#(") \
-   _MK_ENUM(APOSTR,"'") _MK_ENUM(ACCENT,"`") \
-   _MK_ENUM(COMMA,",") \
-   _MK_ENUM(COMMA_AT,",@") \
-   _MK_ENUM(DOT,".") \
-   _MK_ENUM(HASH_APOSTR,"#'") \
-   _MK_ENUM(HASH_ACCENT,"#`") \
-   _MK_ENUM(HASH_COMMA,"#,") \
-   _MK_ENUM(HASH_COMMA_AT,"#,@") \
-   _MK_ENUM(DATUM_COMMENT,"#;") \
-   \
-   _MK_ENUM(NESTED_COMMENT_START,"#|") /* internal use only! */ \
-   _MK_ENUM(NESTED_COMMENT_END,"|#")   /* internal use only! */
-
-struct TokenKind
-{
-  #define _MK_ENUM(name,repr)  name,
-  enum Enum
-  {
-    _DEF_TOKENS
-  };
-  #undef _MK_ENUM
-
-  static const char * name ( Enum x ) { return s_names[x]; }
-  static const char * repr ( Enum x ) { return s_reprs[x]; }
-
-private:
-  static const char * s_names[];
-  static const char * s_reprs[];
-};
 
 class Lexer : public gc
 {
@@ -100,13 +60,6 @@ class Lexer : public gc
   bool m_inNestedComment;
   detail::StringCollector m_strBuf;
 
-  TokenKind::Enum m_curToken;
-  const gc_char * m_valueString;
-  Symbol * m_valueSymbol;
-  int64_t m_valueInteger;
-  double  m_valueReal;
-  bool    m_valueBool;
-
   static const int32_t HT = 9;
   static const int32_t LF = '\n';
   static const int32_t CR = '\r';
@@ -122,18 +75,11 @@ public:
   SymbolTable & symbolTable () { return m_symbolTable; }
   AbstractErrorReporter & errorReporter () { return *m_errors; }
 
-  TokenKind::Enum nextToken ()
+  TokenKind::Enum nextToken ( Token & tok )
   {
-    return m_curToken = _nextToken();
+    _nextToken( tok );
+    return tok.kind();
   }
-
-  TokenKind::Enum curToken () const { return m_curToken; }
-  const SourceCoords & coords () const { return m_tokCoords; }
-  const gc_char * valueString () const { return m_valueString; }
-  Symbol * valueSymbol () const { return m_valueSymbol; }
-  int64_t valueInteger () const { return m_valueInteger; };
-  double valueReal () const { return m_valueReal; };
-  bool valueBool () const { return m_valueBool; };
 
   static std::string & escapeStringChar ( std::string & buf, uint32_t ch );
   static std::string escapeStringChar ( uint32_t ch );
@@ -146,24 +92,25 @@ private:
 
   void nextChar ();
 
-  void saveCoords ()
+  void saveCoords ( Token & tok )
   {
     m_tokCoords.line = m_line;
     m_tokCoords.column = m_decoder.offset() - m_lineOffset;
+    tok.coords( m_tokCoords );
   }
 
-  TokenKind::Enum _nextToken ();
+  void _nextToken ( Token & tok );
 
   void scanNestedComment ();
-  TokenKind::Enum scanCharacterConstant ();
-  TokenKind::Enum scanString ();
-  TokenKind::Enum scanSingleCharacter ();
+  bool scanCharacterConstant ( Token & tok );
+  bool scanString ( Token & tok );
+  TokenKind::Enum scanSingleCharacter ( int32_t & value );
   int32_t scanUnicodeEscape ( unsigned maxLen );
   uint8_t scanHexEscape ();
   uint8_t scanOctalEscape ();
-  TokenKind::Enum scanRemainingIdentifier ();
-  TokenKind::Enum identifier ( const gc_char * name );
-  TokenKind::Enum scanNumber ( unsigned state=0 );
+  bool scanRemainingIdentifier ( Token & tok );
+  bool identifier ( Token & tok, const gc_char * name );
+  bool scanNumber ( Token & tok, unsigned state=0 );
   bool scanUInt ( unsigned base );
 
   static bool isNewLine ( int32_t ch );
