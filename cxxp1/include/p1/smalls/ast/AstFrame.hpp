@@ -16,53 +16,57 @@
 */
 
 
-#ifndef P1_SMALLS_AST_FRAME_HPP
-#define	P1_SMALLS_AST_FRAME_HPP
+#ifndef P1_SMALLS_AST_ASTFRAME_HPP
+#define	P1_SMALLS_AST_ASTFRAME_HPP
 
 #include "p1/util/gc-support.hpp"
 #include "p1/adt/CircularList.hpp"
 
 namespace p1 {
 namespace smalls {
+  class Symbol;
+}}
 
-class Symbol;
-class Variable;
-class Frame;
+namespace p1 {
+namespace smalls {
 
-class Variable : public p1::ListEntry, public gc
+class AstVariable;
+class AstFrame;
+
+class AstVariable : public p1::ListEntry, public gc
 {
 public:
   const gc_char * const name;
-  Frame * const frame;
+  AstFrame * const frame;
 
-  Variable ( const gc_char * name_, Frame * frame_ )
+  AstVariable ( const gc_char * name_, AstFrame * frame_ )
     : name(name_), frame(frame_)
   {
     ListEntry::debugClear();
   }
 };
 
-std::ostream & operator << ( std::ostream & os, const Variable & var );
+std::ostream & operator << ( std::ostream & os, const AstVariable & var );
 
-class Frame : public gc
+class AstFrame : public gc
 {
 public:
-  Frame * const parent;
+  AstFrame * const parent;
   int const level;
 
-  Frame ( Frame * parent_ )
+  AstFrame ( AstFrame * parent_ )
     : parent( parent_ ), level( parent_?parent_->level + 1 : 0)
   {}
 
-  Variable * newVariable ( const gc_char * name );
-  Variable * newAnonymous ( const gc_char * infoPrefix );
+  AstVariable * newVariable ( const gc_char * name );
+  AstVariable * newAnonymous ( const gc_char * infoPrefix );
 
 private:
-  typedef p1::CircularList<Variable> VariableList;
+  typedef p1::CircularList<AstVariable> VariableList;
   VariableList m_vars;
 };
 
 }} // namespaces
 
-#endif	/* P1_SMALLS_AST_FRAME_HPP */
+#endif	/* P1_SMALLS_AST_ASTFRAME_HPP */
 

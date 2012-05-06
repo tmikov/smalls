@@ -81,11 +81,11 @@ private:
   struct Context : public gc
   {
     Scope * scope;
-    Frame * frame;
+    AstFrame * frame;
     DeferredDefineList defnList; //< the deferred definitions
     DatumList exprList; //< the body expressions
 
-    Context ( Scope * scope_, Frame * frame_ ) : scope(scope_), frame(frame_) {};
+    Context ( Scope * scope_, AstFrame * frame_ ) : scope(scope_), frame(frame_) {};
 
     bool topLevel () const { return this->scope->level == 0; };
   };

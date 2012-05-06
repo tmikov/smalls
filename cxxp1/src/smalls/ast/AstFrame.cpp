@@ -14,29 +14,29 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "Frame.hpp"
+#include "AstFrame.hpp"
 #include "p1/util/format-str.hpp"
 #include <iostream>
 
 using namespace p1;
 using namespace p1::smalls;
 
-std::ostream & p1::smalls::operator<< ( std::ostream & os, const Variable & var )
+std::ostream & p1::smalls::operator<< ( std::ostream & os, const AstVariable & var )
 {
   return os << var.name << ':' << var.frame->level;
 }
 
-Variable * Frame::newVariable ( const gc_char * name )
+AstVariable * AstFrame::newVariable ( const gc_char * name )
 {
-  Variable * var = new Variable( name, this );
+  AstVariable * var = new AstVariable( name, this );
   m_vars.push_back( var );
   return var;
 }
 
-Variable * Frame::newAnonymous ( const gc_char * infoPrefix )
+AstVariable * AstFrame::newAnonymous ( const gc_char * infoPrefix )
 {
   // Note that variable names don't need to be unique in a frame
-  Variable * var = new Variable( formatGCStr("tmp_%s", infoPrefix), this );
+  AstVariable * var = new AstVariable( formatGCStr("tmp_%s", infoPrefix), this );
   m_vars.push_back( var );
   return var;
 }

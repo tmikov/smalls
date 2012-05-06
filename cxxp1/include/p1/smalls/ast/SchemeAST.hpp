@@ -19,10 +19,15 @@
 #ifndef P1_SMALLS_AST_SCHEMEAST_HPP
 #define	P1_SMALLS_AST_SCHEMEAST_HPP
 
-#include "Frame.hpp"
+#include "AstFrame.hpp"
 #include "p1/smalls/common/SourceCoords.hpp"
 #include "p1/adt/LinkedList.hpp"
 #include <vector>
+
+namespace p1 {
+namespace smalls {
+  class Syntax;
+}}
 
 namespace p1 {
 namespace smalls {
@@ -87,17 +92,15 @@ inline std::ostream & operator << ( std::ostream & os, const Ast & ast )
 
 struct AstVar : public Ast
 {
-  Variable * var;
+  AstVariable * var;
 
-  AstVar ( const SourceCoords & coords_, Variable * var ) : Ast( AstCode::VAR, coords_ )
+  AstVar ( const SourceCoords & coords_, AstVariable * var ) : Ast( AstCode::VAR, coords_ )
   {
     this->var = var;
   }
 
   virtual void toStream ( std::ostream & os ) const;
 };
-
-class Syntax;
 
 struct AstDatum : public Ast
 {
@@ -113,10 +116,10 @@ struct AstDatum : public Ast
 
 struct AstSet : public Ast
 {
-  Variable * target;
+  AstVariable * target;
   ListOfAst rvalue;
 
-  AstSet ( const SourceCoords & coords_, Variable * target, const ListOfAst & rvalue )
+  AstSet ( const SourceCoords & coords_, AstVariable * target, const ListOfAst & rvalue )
     : Ast( AstCode::SET, coords_ )
   {
     this->target = target;
@@ -162,24 +165,24 @@ struct AstIf : public Ast
   virtual void toStream ( std::ostream & os ) const;
 };
 
-typedef std::vector<Variable *, gc_allocator<Variable *> > VectorOfVariable;
+typedef std::vector<AstVariable *, gc_allocator<AstVariable *> > VectorOfVariable;
 
 struct AstClosure : public Ast
 {
-  Frame * enclosingFrame;
+  AstFrame * enclosingFrame;
   VectorOfVariable * params;
-  Variable * listParam;
-  Frame * paramFrame;
-  Frame * bodyFrame;
+  AstVariable * listParam;
+  AstFrame * paramFrame;
+  AstFrame * bodyFrame;
   ListOfAst body;
 
   AstClosure (
     const SourceCoords & coords_,
-    Frame * enclosingFrame,
+    AstFrame * enclosingFrame,
     VectorOfVariable * params,
-    Variable * listParam,
-    Frame * paramFrame,
-    Frame * bodyFrame,
+    AstVariable * listParam,
+    AstFrame * paramFrame,
+    AstFrame * bodyFrame,
     const ListOfAst & body
   ) : Ast( AstCode::CLOSURE, coords_ )
   {
@@ -196,19 +199,19 @@ struct AstClosure : public Ast
 
 struct AstLet : public Ast
 {
-  Frame * enclosingFrame;
+  AstFrame * enclosingFrame;
   VectorOfVariable * params;
-  Frame * paramFrame;
-  Frame * bodyFrame;
+  AstFrame * paramFrame;
+  AstFrame * bodyFrame;
   ListOfAst body;
   VectorOfListOfAst * values;
 
   AstLet (
     const SourceCoords & coords_,
-    Frame * enclosingFrame,
+    AstFrame * enclosingFrame,
     VectorOfVariable * params,
-    Frame * paramFrame,
-    Frame * bodyFrame,
+    AstFrame * paramFrame,
+    AstFrame * bodyFrame,
     const ListOfAst & body,
     VectorOfListOfAst * values
   ) : Ast( AstCode::LET, coords_ )
@@ -227,10 +230,10 @@ protected:
   AstLet (
     AstCode::Enum code,
     const SourceCoords & coords_,
-    Frame * enclosingFrame,
+    AstFrame * enclosingFrame,
     VectorOfVariable * params,
-    Frame * paramFrame,
-    Frame * bodyFrame,
+    AstFrame * paramFrame,
+    AstFrame * bodyFrame,
     const ListOfAst & body,
     VectorOfListOfAst * values
   ) : Ast( code, coords_ )
@@ -252,10 +255,10 @@ struct AstFix : public AstLet
 {
   AstFix (
     const SourceCoords & coords_,
-    Frame * enclosingFrame,
+    AstFrame * enclosingFrame,
     VectorOfVariable * params,
-    Frame * paramFrame,
-    Frame * bodyFrame,
+    AstFrame * paramFrame,
+    AstFrame * bodyFrame,
     const ListOfAst & body,
     VectorOfListOfAst * values
   );

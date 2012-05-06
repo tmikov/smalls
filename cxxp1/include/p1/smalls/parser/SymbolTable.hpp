@@ -163,7 +163,7 @@ public:
   union
   {
     ResWord::Enum resWord;
-    class Variable * var;
+    class AstVariable * var;
     Macro * macro;
   } u;
 

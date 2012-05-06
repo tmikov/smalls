@@ -121,7 +121,7 @@ SchemeParser::~SchemeParser ()
 
 ListOfAst SchemeParser::compileLibraryBody ( Syntax * datum )
 {
-  Context * ctx = new Context( m_symbolTable.newScope(), new Frame(NULL) );
+  Context * ctx = new Context( m_symbolTable.newScope(), new AstFrame(NULL) );
   return compileBody( ctx, datum );
 }
 
@@ -440,7 +440,7 @@ ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
 
     VectorOfVariable * vars = new (GC) VectorOfVariable();
     VectorOfListOfAst * values = new (GC) VectorOfListOfAst();
-    Frame * paramFrame = ctx->frame;
+    AstFrame * paramFrame = ctx->frame;
 
     // Build the let initialization
     BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
@@ -453,7 +453,7 @@ ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
     }
 
     // Create a dummy body frame
-    ctx->frame = new Frame(ctx->frame);
+    ctx->frame = new AstFrame(ctx->frame);
 
     ListOfAst body;
     VectorOfVariable::const_iterator vit = vars->begin();
@@ -462,7 +462,7 @@ ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
     for ( ; dit != dit_end; ++vit, ++dit )
     {
       const DeferredDefine & defn = *dit;
-      Variable * var = *vit;
+      AstVariable * var = *vit;
 
       body += new AstSet( defn.second->coords, var, compileExpression( ctx, defn.second ) );
     }
@@ -699,11 +699,11 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
     return makeUnspecified(lambdaPair);
 
   VectorOfVariable * vars = new (GC) VectorOfVariable();
-  Variable * listParam = NULL;
+  AstVariable * listParam = NULL;
 
   Scope * paramScope = m_symbolTable.newScope();
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, paramScope );
-  Frame * paramFrame = new Frame( ctx->frame );
+  AstFrame * paramFrame = new AstFrame( ctx->frame );
 
   if (p0->skind == SyntaxKind::SYMBOL) // one formal parameter will accept a list of actual parameters
   {
@@ -769,7 +769,7 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
 
 
   ListOfAst body;
-  Context * bodyCtx = new Context( m_symbolTable.newScope(), new Frame(paramFrame) );
+  Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
   if (!restp->isNil())
@@ -858,7 +858,7 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
 
   Scope * paramScope = m_symbolTable.newScope();
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, paramScope );
-  Frame * paramFrame = new Frame( ctx->frame );
+  AstFrame * paramFrame = new AstFrame( ctx->frame );
 
   BOOST_FOREACH( Syntax * curParam, varDatums )
   {
@@ -883,7 +883,7 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
   // Parse the body
   //
   ListOfAst body;
-  Context * bodyCtx = new Context( m_symbolTable.newScope(), new Frame(paramFrame) );
+  Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
   if (!restp->isNil())

@@ -109,7 +109,7 @@ void AstClosure::toStream ( std::ostream & os ) const
 
   os << '(';
   unsigned c = 0;
-  BOOST_FOREACH( Variable * var, *this->params )
+  BOOST_FOREACH( AstVariable * var, *this->params )
   {
     if (c++ > 0)
       os << ' ';
@@ -146,10 +146,10 @@ void AstLet::toStream ( std::ostream & os ) const
 
 AstFix::AstFix (
   const SourceCoords & coords_,
-  Frame * enclosingFrame,
+  AstFrame * enclosingFrame,
   VectorOfVariable * params,
-  Frame * paramFrame,
-  Frame * bodyFrame,
+  AstFrame * paramFrame,
+  AstFrame * bodyFrame,
   const ListOfAst & body,
   VectorOfListOfAst * values
 ) : AstLet(
