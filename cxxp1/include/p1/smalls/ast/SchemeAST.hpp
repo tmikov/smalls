@@ -22,6 +22,7 @@
 #include "AstFrame.hpp"
 #include "p1/smalls/common/SourceCoords.hpp"
 #include "p1/adt/LinkedList.hpp"
+#include "p1/util/casting.hpp"
 #include <vector>
 
 namespace p1 {
@@ -70,6 +71,8 @@ public:
     this->m_prev = this->m_next = NULL;
   };
 
+  static bool classof ( const Ast * ) { return true; }
+
   virtual void toStream ( std::ostream & os ) const;
 
   struct LinkAccessor
@@ -110,6 +113,9 @@ public:
     : Ast( AstKind::VAR, coords_ ), var( var_ )
   {}
 
+  static bool classof ( const AstVar * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::VAR; }
+
   virtual void toStream ( std::ostream & os ) const;
 };
 
@@ -121,6 +127,9 @@ public:
   AstDatum ( const SourceCoords & coords_, Syntax * datum_ )
     : Ast ( AstKind::DATUM, coords_ ), datum( datum_ )
   {}
+
+  static bool classof ( const AstDatum * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::DATUM; }
 
   virtual void toStream ( std::ostream & os ) const;
 };
@@ -134,6 +143,9 @@ public:
   AstSet ( const SourceCoords & coords_, AstVariable * target_, const ListOfAst & rvalue_ )
     : Ast( AstKind::SET, coords_ ), target(target_), rvalue(rvalue_)
   {}
+
+  static bool classof ( const AstSet * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::SET; }
 
   virtual void toStream ( std::ostream & os ) const;
 };
@@ -150,6 +162,9 @@ public:
     : Ast( AstKind::APPLY, coords_ ), target(target_), params(params_), listParam(listParam_)
   {}
 
+  static bool classof ( const AstApply * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::APPLY; }
+
   virtual void toStream ( std::ostream & os ) const;
 };
 
@@ -164,6 +179,9 @@ public:
           const ListOfAst & cond_, const ListOfAst & thenAst_, const ListOfAst & elseAst_ )
     : Ast( AstKind::IF, coords_ ), cond(cond_),thenAst(thenAst_),elseAst(elseAst_)
   {}
+
+  static bool classof ( const AstIf * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::IF; }
 
   virtual void toStream ( std::ostream & os ) const;
 };
@@ -197,6 +215,9 @@ public:
       body( body_ )
   {}
 
+  static bool classof ( const AstClosure * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::CLOSURE; }
+
   virtual void toStream ( std::ostream & os ) const;
 };
 
@@ -227,6 +248,9 @@ public:
       values( values_ )
   {}
 
+  static bool classof ( const AstLet * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::LET; }
+
   virtual void toStream ( std::ostream & os ) const;
 
 protected:
@@ -251,7 +275,8 @@ protected:
 
 /**
  * A restricted form of let where the variables are unassigned (never modified), and the init
- * expressions are all lambdas.
+ * expressions are all lambdas. This is a synthetic construct - it is never constructed directly
+ * from source but is re-constructed from letrec.
  */
 class AstFix : public AstLet
 {
@@ -265,6 +290,10 @@ public:
     const ListOfAst & body_,
     VectorOfListOfAst * values_
   );
+
+  static bool classof ( const AstFix * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::FIX; }
+
 };
 
 }} // namespaces
