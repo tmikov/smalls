@@ -56,7 +56,9 @@ public:
 
   AstFrame ( AstFrame * parent_ )
     : parent( parent_ ), level( parent_?parent_->level + 1 : 0)
-  {}
+  {
+    m_tmpCount = 0;
+  }
 
   AstVariable * newVariable ( const gc_char * name );
   AstVariable * newAnonymous ( const gc_char * infoPrefix );
@@ -64,6 +66,7 @@ public:
 private:
   typedef p1::CircularList<AstVariable> VariableList;
   VariableList m_vars;
+  unsigned m_tmpCount;
 };
 
 }} // namespaces

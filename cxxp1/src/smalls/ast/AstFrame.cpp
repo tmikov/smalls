@@ -35,8 +35,8 @@ AstVariable * AstFrame::newVariable ( const gc_char * name )
 
 AstVariable * AstFrame::newAnonymous ( const gc_char * infoPrefix )
 {
-  // Note that variable names don't need to be unique in a frame
-  AstVariable * var = new AstVariable( formatGCStr("tmp_%s", infoPrefix), this );
+  // Note that variable names don't really need to be unique in a frame
+  AstVariable * var = new AstVariable( formatGCStr("tmp_%s_%u", infoPrefix, ++m_tmpCount), this );
   m_vars.push_back( var );
   return var;
 }
