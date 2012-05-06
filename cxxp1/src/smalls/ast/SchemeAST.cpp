@@ -16,6 +16,7 @@
 */
 #include "SchemeAST.hpp"
 #include "p1/smalls/parser/Syntax.hpp" // FIXME: should not depend on this
+#include "p1/util/OStreamIndent.hpp"
 #include <boost/foreach.hpp>
 #include <iostream>
 #include <iomanip>
@@ -29,13 +30,6 @@ const char * AstCode::s_names[] =
   _DEF_AST_CODES
 };
 #undef _MK_ENUM
-
-std::ostream & operator<< ( std::ostream & os, OStreamIndent w )
-{
-  os.width( OStreamSetIndent::indent(os) );
-  os << "";
-  return os;
-}
 
 std::ostream & operator<< ( std::ostream & os, const ListOfAst & lst )
 {
@@ -56,18 +50,6 @@ std::ostream & operator<< ( std::ostream & os, const ListOfAst & lst )
   os << OStreamSetIndent(-4);
 
   return os;
-}
-
-int OStreamSetIndent::s_indent_idx = std::ostream::xalloc();
-
-int OStreamSetIndent::indent ( std::ostream & os )
-{
-  return os.iword(OStreamSetIndent::s_indent_idx);
-}
-
-int OStreamSetIndent::indent ( std::ostream & os, int add )
-{
-  return os.iword(OStreamSetIndent::s_indent_idx) += add;
 }
 
 void Ast::toStream ( std::ostream & os ) const

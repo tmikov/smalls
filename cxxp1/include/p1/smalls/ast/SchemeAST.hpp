@@ -77,26 +77,6 @@ inline ListOfAst makeListOfAst ( Ast * ast )
 
 typedef std::vector<ListOfAst, gc_allocator<ListOfAst> > VectorOfListOfAst;
 
-struct OStreamSetIndent
-{
-  int const x;
-  OStreamSetIndent ( int x_ ) : x(x_) {};
-
-  static int s_indent_idx;
-
-  static int indent ( std::ostream & os );
-  static int indent ( std::ostream & os, int add );
-};
-
-inline std::ostream & operator << ( std::ostream & os, OStreamSetIndent si )
-{
-  OStreamSetIndent::indent( os, si.x );
-  return os;
-}
-
-struct OStreamIndent {};
-
-std::ostream & operator<< ( std::ostream & os, OStreamIndent w );
 std::ostream & operator<< ( std::ostream & os, const ListOfAst & lst );
 
 inline std::ostream & operator << ( std::ostream & os, const Ast & ast )
