@@ -20,6 +20,7 @@
 #include <boost/foreach.hpp>
 #include <iostream>
 
+using namespace p1;
 using namespace p1::smalls;
 using namespace p1::smalls::detail;
 
@@ -132,7 +133,7 @@ ListOfAst SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax * datu
 
 void SchemeParser::parseBody ( SchemeParser::Context * ctx, Syntax * datum )
 {
-  while (!datum->isNil())
+  while (!isa<SyntaxNil>(datum))
   {
     if (SyntaxPair * p = needPair("",datum))
     {
@@ -147,13 +148,13 @@ void SchemeParser::parseBody ( SchemeParser::Context * ctx, Syntax * datum )
 void SchemeParser::processBodyForm ( SchemeParser::Context * ctx, Syntax * datum )
 {
 tail_recursion:
-  if (datum->isNil())
+  if (isa<SyntaxNil>(datum))
   {
     error( datum, "Invalid empty form" );
     return;
   }
 
-  if (SyntaxPair * pair = isPair( datum ))
+  if (SyntaxPair * pair = dyn_cast<SyntaxPair>( datum ))
   {
     Syntax * car = pair->car();
     if (Binding * binding = isBinding(car))
@@ -217,15 +218,15 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
     return;
 
   Binding * bnd;
-  if (p0->skind == SyntaxKind::SYMBOL)
+  if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(p0))
   {
-    if (bindSyntaxSymbol( bnd, ctx->scope, static_cast<SyntaxSymbol *>(p0) ))
+    if (bindSyntaxSymbol( bnd, ctx->scope, ss ))
     {
       bnd->bindVar( ctx->frame->newVariable( bnd->sym->name ) );
     }
     else
     {
-      error( p0, "'%s' already defined at %s", bnd->sym->name, bnd->defCoords().toString().c_str() );
+      error( p0, "'%s' already defined at %s", ss->symbol->name, bnd->defCoords().toString().c_str() );
       bnd = NULL;
     }
   }
@@ -236,12 +237,12 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
   }
 
   Syntax * value;
-  if (restp->isNil())
+  if (isa<SyntaxNil>(restp))
     value = new SyntaxBinding( restp->coords, m_unspec );
   else
   {
     value = restp->car();
-    if (!restp->cdr()->isNil())
+    if (!isa<SyntaxNil>(restp->cdr()))
       error( restp->cdr(), "define must specify only one value" );
   }
 
@@ -283,35 +284,28 @@ Syntax * MacroOr::expand ( Syntax * datum )
   Syntax * s = datum;
   SyntaxPair * pair;
 
-  if (s->isNil())
+  if (isa<SyntaxNil>(s))
     throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  if (s->skind != SyntaxKind::PAIR)
+  if (!(pair = dyn_cast<SyntaxPair>(s)))
     throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  pair = static_cast<SyntaxPair*>(s);
 
   //Syntax * s0 = pair->car->access();
   s = pair->cdr();
 
-  if (s->isNil())
-  {
+  if (isa<SyntaxNil>(s))
     return new SyntaxValue( SyntaxKind::BOOL, datum->coords, true );
-  }
 
-  if (s->skind != SyntaxKind::PAIR)
+  if (!(pair = dyn_cast<SyntaxPair>(s)))
     throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  pair = static_cast<SyntaxPair*>(s);
 
   Syntax * s1 = pair->car();
   s = pair->cdr();
 
-  if (s->isNil())
-  {
+  if (isa<SyntaxNil>(s))
     return s1;
-  }
 
-  if (s->skind != SyntaxKind::PAIR)
+  if (!(pair = dyn_cast<SyntaxPair>(s)))
     throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  pair = static_cast<SyntaxPair*>(s);
 
   Syntax * s2 = pair->car();
   Syntax * rest = pair->cdr();
@@ -338,69 +332,6 @@ Syntax * MacroOr::expand ( Syntax * datum )
 
   return let.toList();
 }
-
-#if 0
-Syntax * MacroTest::expand ( Syntax * datum )
-{
-  Syntax * s = datum;
-  SyntaxPair * pair;
-
-  if (s->isNil())
-    throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  if (s->sclass != SyntaxKind::PAIR)
-    throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  pair = static_cast<SyntaxPair*>(s);
-
-  //Syntax * s0 = pair->car->access();
-  s = pair->cdr();
-
-  if (s->isNil())
-  {
-    return new SyntaxValue( SyntaxKind::BOOL, datum->coords, true );
-  }
-
-  if (s->sclass != SyntaxKind::PAIR)
-    throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  pair = static_cast<SyntaxPair*>(s);
-
-  Syntax * s1 = pair->car();
-  s = pair->cdr();
-
-  if (s->isNil())
-  {
-    return s1;
-  }
-
-  if (s->sclass != SyntaxKind::PAIR)
-    throw ErrorInfo( s->coords, "Invalid macro pattern" );
-  pair = static_cast<SyntaxPair*>(s);
-
-  Syntax * s2 = pair->car();
-  Syntax * rest = pair->cdr();
-
-  ListBuilder let;
-  let << new SyntaxSymbol( datum->coords, m_symbolTable.newSymbol( "let" ) );
-
-  ListBuilder init;
-  ListBuilder init1;
-  init1 << new SyntaxSymbol( datum->coords, m_symbolTable.newSymbol("tmp") ) << s1;
-  init << init1;
-  let << init;
-
-  ListBuilder ifl;
-  ifl << new SyntaxSymbol( datum->coords, m_symbolTable.newSymbol( "if" ) )
-      << new SyntaxSymbol( datum->coords, m_symbolTable.newSymbol( "tmp" ) )
-      << new SyntaxSymbol( datum->coords, m_symbolTable.newSymbol( "tmp" ) );
-
-  ListBuilder elsel;
-  elsel << new SyntaxSymbol( datum->coords, m_symbolTable.newSymbol( "or" ) )
-        << s2;
-  ifl << elsel.toList( rest );
-  let << ifl;
-
-  return let.toList();
-}
-#endif
 
 ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
 {
@@ -494,73 +425,73 @@ ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
 ListOfAst SchemeParser::compileExpression ( SchemeParser::Context * ctx, Syntax * expr )
 {
 tail_recursion:
-  switch (expr->skind)
+  if (SyntaxValue * sv = dyn_cast<SyntaxValue>(expr))
   {
-    Binding * bnd;
-
-  case SyntaxKind::REAL:
-  case SyntaxKind::INTEGER:
-  case SyntaxKind::BOOL:
-  case SyntaxKind::STR:
-    return makeListOfAst( new AstDatum( expr->coords, static_cast<SyntaxValue*>(expr) ) );
-
-  // case SyntaxClass::VECTOR: //FIXME
-
-  case SyntaxKind::SYMBOL:
-    if ( (bnd = lookupSyntaxSymbol(static_cast<SyntaxSymbol*>(expr))) == NULL)
-    {
-      error( expr, "Undefined variable '%s'", static_cast<SyntaxSymbol*>(expr)->symbol->name );
-      break;
-    }
-    goto binding;
-  case SyntaxKind::BINDING:
-    bnd = static_cast<SyntaxBinding*>(expr)->bnd;
-  binding:
-    if (bnd == m_unspec)
-      break; // fall-through to the default case
-    if (bnd->kind() == BindingKind::VAR)
-      return makeListOfAst( new AstVar(expr->coords, bnd->var()) );
+    return makeListOfAst( new AstDatum( expr->coords, sv ) );
+  }
+  else if (SyntaxVector * svec = dyn_cast<SyntaxVector>(expr))
+  {
+    (void)svec; // prevent unused warning
+    // FIXME
+    assert( false && "FIXME: implement vector" );
+  }
+  else if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(expr))
+  {
+    if (Binding * bnd = lookupSyntaxSymbol(ss))
+      return compileBinding( ctx, bnd, expr );
     else
-      error( expr, "Undefined variable '%s'", bnd->sym->name );
-    break;
-
-  case SyntaxKind::PAIR:
+      error( expr, "Undefined variable '%s'", ss->symbol->name );
+  }
+  else if (SyntaxBinding * sb = dyn_cast<SyntaxBinding>(expr))
+  {
+    return compileBinding( ctx, sb->bnd, expr );
+  }
+  else if (SyntaxPair * pair = dyn_cast<SyntaxPair>(expr))
+  {
+    // Check for reserved words
+    if (Binding * bnd = isBinding(pair->car()))
     {
-      SyntaxPair * pair = static_cast<SyntaxPair*>(expr);
-
-      // Check for reserved words
-      if (Binding * bnd = isBinding(pair->car()))
+      if (bnd->kind() == BindingKind::MACRO)
       {
-        if (bnd->kind() == BindingKind::MACRO)
-        {
-          expr = expandMacro( ctx, bnd->macro(), pair );
-          if (!expr) // error?
-            break;
-          goto tail_recursion;
-        }
-        else if (bnd->kind() == BindingKind::RESWORD)
-          return compileResForm( ctx, pair, bnd );
+        expr = expandMacro( ctx, bnd->macro(), pair );
+        if (!expr) // error?
+          goto unspec;
+        goto tail_recursion;
       }
-
-      // This is a function application
-      return compileCall( ctx, pair );
+      else if (bnd->kind() == BindingKind::RESWORD)
+        return compileResForm( ctx, pair, bnd );
     }
-    break;
-
-  default:
+    // This is a function application
+    return compileCall( ctx, pair );
+  }
+  else
+  {
     error( expr, "Invalid expression" );
-    break;
   }
 
+unspec:
   return makeUnspecified(expr);
 }
+
+ListOfAst SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords )
+{
+  if (bnd != m_unspec)
+  {
+    if (bnd->kind() == BindingKind::VAR)
+      return makeListOfAst( new AstVar(exprForCoords->coords, bnd->var()) );
+    else
+      error( exprForCoords, "Undefined variable '%s'", bnd->sym->name );
+  }
+  return makeUnspecified(exprForCoords);
+}
+
 
 ListOfAst SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * pair )
 {
   ListOfAst target = compileExpression( ctx, pair->car() );
   VectorOfListOfAst * params = new VectorOfListOfAst();
   Syntax * n = pair->cdr();
-  while (!n->isNil())
+  while (!isa<SyntaxNil>(n))
   {
     SyntaxPair * expr = needPair( "", n );
     if (!expr)
@@ -603,10 +534,10 @@ ListOfAst SchemeParser::compileBegin ( SchemeParser::Context * ctx, SyntaxPair *
   Syntax * n = beginPair->cdr();
 
   // Don't return an empty list
-  if (n->isNil())
+  if (isa<SyntaxNil>(n))
     return makeUnspecified(beginPair);
 
-  while (!n->isNil())
+  while (!isa<SyntaxNil>(n))
   {
     SyntaxPair * p = needPair( "", n );
     if (!p)
@@ -634,17 +565,17 @@ ListOfAst SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair
   // Target
   //
   Binding * bnd;
-  if (ps[0]->skind == SyntaxKind::SYMBOL)
+  if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(ps[0]))
   {
-    bnd = lookupSyntaxSymbol(static_cast<SyntaxSymbol*>(ps[0]));
+    bnd = lookupSyntaxSymbol(ss);
     if (!bnd)
     {
-      error( ps[0], "Undefined variable '%s'", static_cast<SyntaxSymbol*>(ps[0])->symbol->name);
+      error( ps[0], "Undefined variable '%s'", ss->symbol->name);
       return makeUnspecified(setPair);
     }
   }
-  else if (ps[0]->skind == SyntaxKind::BINDING)
-    bnd = static_cast<SyntaxBinding*>(ps[0])->bnd;
+  else if (SyntaxBinding * sb = dyn_cast<SyntaxBinding>(ps[0]))
+    bnd = sb->bnd;
   else
   {
     error( ps[0], "set! requires a variable" );
@@ -676,13 +607,13 @@ ListOfAst SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * if
   ListOfAst thenAst = compileExpression( ctx, ps[1] );
   ListOfAst elseAst;
 
-  if (restp->isNil())
+  if (isa<SyntaxNil>(restp))
     elseAst += new Ast(AstKind::UNSPECIFIED, restp->coords );
   else
   {
     elseAst = compileExpression( ctx, restp->car() );
 
-    if (!restp->cdr()->isNil())
+    if (!isa<SyntaxNil>(restp->cdr()))
       error( restp->cdr(), "if: form list is too long" );
   }
 
@@ -704,60 +635,60 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, paramScope );
   AstFrame * paramFrame = new AstFrame( ctx->frame );
 
-  if (p0->skind == SyntaxKind::SYMBOL) // one formal parameter will accept a list of actual parameters
+  if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(p0)) // one formal parameter will accept a list of actual parameters
   {
     Binding * bnd;
-    bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(p0) );
+    bindSyntaxSymbol( bnd, paramScope, ss );
     bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
     listParam = bnd->var();
   }
-  else if (SyntaxPair * params = isPair(p0)) // a list of formal parameters
+  else if (SyntaxPair * params = dyn_cast<SyntaxPair>(p0)) // a list of formal parameters
   {
     for(;;)
     {
       Syntax * curParam = params->car();
-      if (curParam->skind == SyntaxKind::SYMBOL)
+      if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(curParam))
       {
         Binding * bnd;
-        if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam) ))
+        if (bindSyntaxSymbol( bnd, paramScope, ss ))
         {
           bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
           vars->push_back( bnd->var() );
         }
         else
         {
-          error( curParam, "Duplicated lambda parameter '%s'", bnd->sym->name );
-          vars->push_back( paramFrame->newAnonymous( bnd->sym->name ) );
+          error( curParam, "Duplicated lambda parameter '%s'", ss->symbol->name );
+          vars->push_back( paramFrame->newAnonymous( ss->symbol->name ) );
         }
       }
       else
         error( curParam, "Lambda parameter is not an identifier" );
 
-      if (SyntaxPair * next = isPair(params->cdr()))
+      if (SyntaxPair * next = dyn_cast<SyntaxPair>(params->cdr()))
         params = next;
       else
         break;
     }
 
-    if (!params->cdr()->isNil())
+    if (!isa<SyntaxNil>(params->cdr()))
     {
       Syntax * curParam = params->cdr();
-      if (curParam->skind != SyntaxKind::SYMBOL)
-        error( curParam, "Lambda parameter is not an identifier" );
-      else
+      if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(curParam))
       {
         Binding * bnd;
-        if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam) ))
+        if (bindSyntaxSymbol( bnd, paramScope, ss ))
         {
           bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
           listParam = bnd->var();
         }
         else
         {
-          error( curParam, "Duplicated lambda parameter '%s'", bnd->sym->name );
-          listParam = paramFrame->newAnonymous( bnd->sym->name );
+          error( curParam, "Duplicated lambda parameter '%s'", ss->symbol->name );
+          listParam = paramFrame->newAnonymous( ss->symbol->name );
         }
       }
+      else
+        error( curParam, "Lambda parameter is not an identifier" );
     }
   }
   else
@@ -771,7 +702,7 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
   Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
-  if (!restp->isNil())
+  if (!isa<SyntaxNil>(restp))
     body = compileBody( bodyCtx, restp );
   else
   {
@@ -792,8 +723,8 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
 
 ListOfAst SchemeParser::compileLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
 {
-  if (SyntaxPair * p = isPair(letPair->cdr()))
-    if (p->car()->skind == SyntaxKind::PAIR || p->car()->isNil())
+  if (SyntaxPair * p = dyn_cast<SyntaxPair>(letPair->cdr()))
+    if (p->car()->skind == SyntaxKind::PAIR || isa<SyntaxNil>(p->car()))
       return compileBasicLet( ctx, letPair );
 //    else if (p->car->sclass == SyntaxClass::SYMBOL)
 //      return compileNamedLet( ctx, letPair );
@@ -813,11 +744,11 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
   DatumList varDatums;
   DatumList valueDatums;
 
-  if (p0->isNil())
+  if (isa<SyntaxNil>(p0))
   {
     // Empty init list
   }
-  else if (SyntaxPair * inits = isPair(p0)) // a list of (symbol init) pairs
+  else if (SyntaxPair * inits = dyn_cast<SyntaxPair>(p0)) // a list of (symbol init) pairs
   {
     for(;;)
     {
@@ -828,9 +759,9 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
         valueDatums.push_back( dt[1] );
       }
 
-      if (SyntaxPair * next = isPair(inits->cdr()))
+      if (SyntaxPair * next = dyn_cast<SyntaxPair>(inits->cdr()))
         inits = next;
-      else if (inits->cdr()->isNil())
+      else if (isa<SyntaxNil>(inits->cdr()))
         break;
       else
       {
@@ -861,18 +792,18 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
 
   BOOST_FOREACH( Syntax * curParam, varDatums )
   {
-    if (curParam->skind == SyntaxKind::SYMBOL)
+    if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(curParam))
     {
       Binding * bnd;
-      if (bindSyntaxSymbol( bnd, paramScope, static_cast<SyntaxSymbol*>(curParam) ))
+      if (bindSyntaxSymbol( bnd, paramScope, ss ))
       {
         bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
         vars->push_back( bnd->var() );
       }
       else
       {
-        error( curParam, "let: duplicated variable '%s'", bnd->sym->name );
-        vars->push_back( paramFrame->newAnonymous( bnd->sym->name ) );
+        error( curParam, "let: duplicated variable '%s'", ss->symbol->name );
+        vars->push_back( paramFrame->newAnonymous( ss->symbol->name ) );
       }
     }
     else
@@ -885,7 +816,7 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
   Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
-  if (!restp->isNil())
+  if (!isa<SyntaxNil>(restp))
     body = compileBody( bodyCtx, restp );
   else
   {
@@ -924,11 +855,11 @@ ListOfAst SchemeParser::compileNamedLet ( SchemeParser::Context * ctx, SyntaxPai
 
 bool SchemeParser::splitLetParams ( Syntax * p0, DatumList & varDatums, DatumList & valueDatums )
 {
-  if (p0->isNil())
+  if (isa<SyntaxNil>(p0))
   {
     // Empty init list
   }
-  else if (SyntaxPair * inits = isPair(p0)) // a list of (symbol init) pairs
+  else if (SyntaxPair * inits = dyn_cast<SyntaxPair>(p0)) // a list of (symbol init) pairs
   {
     for(;;)
     {
@@ -939,9 +870,9 @@ bool SchemeParser::splitLetParams ( Syntax * p0, DatumList & varDatums, DatumLis
         valueDatums.push_back( dt[1] );
       }
 
-      if (SyntaxPair * next = isPair(inits->cdr()))
+      if (SyntaxPair * next = dyn_cast<SyntaxPair>(inits->cdr()))
         inits = next;
-      else if (inits->cdr()->isNil())
+      else if (isa<SyntaxNil>(inits->cdr()))
         break;
       else
       {
@@ -978,7 +909,7 @@ bool SchemeParser::needParams ( const char * formName, Syntax * datum, unsigned 
 
   for ( unsigned i = 0; i != np; ++i )
   {
-    if (SyntaxPair * p = isPair(datum))
+    if (SyntaxPair * p = dyn_cast<SyntaxPair>(datum))
     {
       params[i] = p->car();
       datum = p->cdr();
@@ -1003,10 +934,10 @@ bool SchemeParser::needParams ( const char * formName, Syntax * datum, unsigned 
   }
   else
   {
-    if (datum->skind == SyntaxKind::NIL)
-      *restp = static_cast<SyntaxNil*>(datum);
-    else if (datum->skind == SyntaxKind::PAIR)
-      *restp = static_cast<SyntaxPair*>(datum);
+    if (isa<SyntaxNil>(datum))
+      *restp = cast<SyntaxNil>(datum);
+    else if (isa<SyntaxPair>(datum))
+      *restp = cast<SyntaxPair>(datum);
     else
     {
       error( datum, "%s%s" "form must be a proper list", formName?formName:"", formName?":":"" );
@@ -1055,9 +986,9 @@ SyntaxPair * SchemeParser::needPair ( const char * formName, Syntax * datum )
   if (formName && !*formName) // convert "" to NULL
     formName = NULL;
 
-  if (datum->skind == SyntaxKind::PAIR)
-    return static_cast<SyntaxPair*>(datum);
-  else if (datum->skind == SyntaxKind::NIL)
+  if (SyntaxPair * pair = dyn_cast<SyntaxPair>(datum))
+    return pair;
+  else if (isa<SyntaxNil>(datum))
     error( datum, "%s%s" "form list is too short", formName?formName:"", formName?":":"" );
   else
     error( datum, "%s%s" "form must be a proper list", formName?formName:"", formName?":":"" );
@@ -1069,7 +1000,7 @@ bool SchemeParser::needNil ( const char * formName, Syntax * datum )
   if (formName && !*formName) // convert "" to NULL
     formName = NULL;
 
-  if (datum->isNil())
+  if (isa<SyntaxNil>(datum))
     return true;
   else
   {

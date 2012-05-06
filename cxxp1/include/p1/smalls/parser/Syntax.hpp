@@ -20,6 +20,7 @@
 #define	P1_SMALLS_PARSER_SYNTAX_HPP
 
 #include "p1/smalls/common/SourceCoords.hpp"
+#include "p1/util/casting.hpp"
 #include <vector>
 #include <utility>
 #include <cstring>
@@ -101,7 +102,7 @@ public:
   SourceCoords coords;
   Syntax ( SyntaxKind::Enum skind_, const SourceCoords & coords_ ) : skind( skind_ ), coords( coords_ ) {}
 
-  bool isNil () const { return this->skind == SyntaxKind::NIL; }
+  static bool classof ( const Syntax * ) { return true; }
 
   virtual Syntax * wrap ( Mark * mark );
 
@@ -139,6 +140,18 @@ public:
   SyntaxValue ( SyntaxKind::Enum skind_, const SourceCoords & coords_, const gc_char * str )
     : Syntax( skind_, coords_ ) { assert(skind == SyntaxKind::STR); u.str = str; }
 
+  static bool classof ( const SyntaxValue * ) { return true; }
+  static bool classof ( const Syntax * t )
+  {
+    switch (t->skind)
+    {
+    case SyntaxKind::REAL: case SyntaxKind::INTEGER: case SyntaxKind::BOOL: case SyntaxKind::STR:
+      return true;
+    default:
+      return false;
+    }
+  }
+
   virtual void toStream ( std::ostream & os ) const;
   virtual bool equal ( const Syntax * x ) const;
 };
@@ -153,6 +166,9 @@ public:
     : Syntax( SyntaxKind::SYMBOL, coords_ ), symbol(symbol_), mark(mark_)
   {}
 
+  static bool classof ( const SyntaxSymbol * ) { return true; }
+  static bool classof ( const Syntax * t ) { return t->skind == SyntaxKind::SYMBOL; }
+
   virtual Syntax * wrap ( Mark * mark );
 
   virtual void toStream ( std::ostream & os ) const;
@@ -166,6 +182,9 @@ public:
 
   SyntaxBinding ( const SourceCoords & coords_, Binding * bnd )
     : Syntax( SyntaxKind::BINDING, coords_ ) { this->bnd = bnd; }
+
+  static bool classof ( const SyntaxBinding * ) { return true; }
+  static bool classof ( const Syntax * t ) { return t->skind == SyntaxKind::BINDING; }
 
   virtual void toStream ( std::ostream & os ) const;
   virtual bool equal ( const Syntax * x ) const;
@@ -185,6 +204,9 @@ public:
     m_wrappedCar = NULL;
     m_wrappedCdr = NULL;
   }
+
+  static bool classof ( const SyntaxPair * ) { return true; }
+  static bool classof ( const Syntax * t ) { return t->skind == SyntaxKind::PAIR; }
 
   Syntax* car() const;
 
@@ -221,6 +243,9 @@ struct SyntaxNil : public SyntaxPair
   SyntaxNil ( const SourceCoords & coords )
     : SyntaxPair( SyntaxKind::NIL, coords, NULL, NULL ) {}
 
+  static bool classof ( const SyntaxNil * ) { return true; }
+  static bool classof ( const Syntax * t ) { return t->skind == SyntaxKind::NIL; }
+
   virtual Syntax * wrap ( Mark * mark );
   virtual bool equal ( const Syntax * x ) const;
   virtual void toStream ( std::ostream & os ) const;
@@ -236,6 +261,9 @@ public:
 
   SyntaxVector ( const SourceCoords & coords_, Syntax ** data_, unsigned len_, Mark * mark_ = NULL )
     : Syntax( SyntaxKind::VECTOR, coords ), m_data( data_ ), len( len_ ), mark(mark_) {}
+
+  static bool classof ( const SyntaxVector * ) { return true; }
+  static bool classof ( const Syntax * t ) { return t->skind == SyntaxKind::VECTOR; }
 
   virtual Syntax * wrap ( Mark * mark );
   Syntax* getElement( unsigned i ) const;
@@ -296,16 +324,14 @@ Syntax * syntaxVisitAll ( Syntax * datum, const PRE & pre, const POST & post )
 recur:
   datum = pre( datum );
 
-  if (datum->skind == SyntaxKind::PAIR)
+  if (SyntaxPair * pair = dyn_cast<SyntaxPair>(datum))
   {
-    SyntaxPair * pair = static_cast<SyntaxPair*>(datum);
     stack.push_back( StackEntry(-1,pair) );
     datum = pair->m_car;
     goto recur;
   }
-  else if (datum->skind == SyntaxKind::VECTOR)
+  else if (SyntaxVector * vec = dyn_cast<SyntaxVector>(datum))
   {
-    SyntaxVector * vec = static_cast<SyntaxVector*>(datum);
     if (vec->len > 0)
     {
       stack.push_back( StackEntry(0,vec) );

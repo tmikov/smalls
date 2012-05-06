@@ -108,6 +108,7 @@ private:
   ListOfAst convertLetRecStar ( Context * ctx );
 
   ListOfAst compileExpression ( Context * ctx, Syntax * expr );
+  ListOfAst compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords );
   ListOfAst compileCall ( Context * ctx, SyntaxPair * call );
   ListOfAst compileResForm ( Context * ctx, SyntaxPair * pair, Binding * bndCar );
   ListOfAst compileBegin ( Context * ctx, SyntaxPair * beginPair );
@@ -128,23 +129,17 @@ private:
 
   SyntaxPair * needPair ( const char * formName, Syntax * datum );
   bool needNil ( const char * formName, Syntax * datum );
-  SyntaxPair * isPair ( Syntax * datum );
   Binding * isBinding ( Syntax * datum );
 
   void error ( Syntax * datum, const char * msg, ... );
 };
 
-inline SyntaxPair * SchemeParser::isPair ( Syntax * datum )
-{
-  return datum->skind == SyntaxKind::PAIR ? static_cast<SyntaxPair*>(datum) : NULL;
-}
-
 inline Binding * SchemeParser::isBinding ( Syntax * datum )
 {
-  if (datum->skind == SyntaxKind::SYMBOL)
-    return lookupSyntaxSymbol(static_cast<SyntaxSymbol*>(datum));
-  else if (datum->skind == SyntaxKind::BINDING)
-    return static_cast<SyntaxBinding*>(datum)->bnd;
+  if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(datum))
+    return lookupSyntaxSymbol(ss);
+  else if (SyntaxBinding * b = dyn_cast<SyntaxBinding>(datum))
+    return b->bnd;
   else
     return NULL;
 }

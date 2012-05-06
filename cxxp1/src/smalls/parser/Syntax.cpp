@@ -81,44 +81,35 @@ Syntax * Syntax::wrap ( Mark * mark )
 
 Syntax * unwrapCompletely ( Syntax * d, Mark * mark )
 {
-  switch (d->skind)
+  if (SyntaxPair * p = dyn_cast<SyntaxPair>(d))
   {
-  case SyntaxKind::PAIR:
-    {
-      SyntaxPair * p = static_cast<SyntaxPair*>(d);
-      Mark * newMark = concat(mark,p->mark);
-      Syntax * car = unwrapCompletely( p->m_car, newMark );
-      Syntax * cdr = unwrapCompletely( p->m_cdr, newMark );
-      if (car != p->m_car || cdr != p->m_cdr || p->mark != NULL)
-        d = new SyntaxPair( p->coords, car, cdr, NULL );
-    }
-    break;
-
-  case SyntaxKind::VECTOR:
-    {
-      SyntaxVector * v = static_cast<SyntaxVector*>(d);
-      Mark * newMark = concat(mark,v->mark);
-      Syntax ** data = NULL;
-      for ( unsigned i = 0; i != v->len; ++i )
-      {
-        Syntax * tmp = unwrapCompletely( v->m_data[i], newMark );
-        if (tmp != v->m_data[i] && !data)
-        {
-          data = new (GC) Syntax*[v->len];
-          std::memcpy( data, v->m_data, sizeof(data[0])*i );
-        }
-        if (data)
-          data[i] = tmp;
-      }
-      if (data || v->mark != NULL)
-        d = new SyntaxVector( v->coords, data, v->len, NULL );
-    }
-    break;
-
-  default:
-    d = d->wrap(mark);
-    break;
+    Mark * newMark = concat(mark,p->mark);
+    Syntax * car = unwrapCompletely( p->m_car, newMark );
+    Syntax * cdr = unwrapCompletely( p->m_cdr, newMark );
+    if (car != p->m_car || cdr != p->m_cdr || p->mark != NULL)
+      d = new SyntaxPair( p->coords, car, cdr, NULL );
   }
+  else if (SyntaxVector * v = dyn_cast<SyntaxVector>(d))
+  {
+    Mark * newMark = concat(mark,v->mark);
+    Syntax ** data = NULL;
+    for ( unsigned i = 0; i != v->len; ++i )
+    {
+      Syntax * tmp = unwrapCompletely( v->m_data[i], newMark );
+      if (tmp != v->m_data[i] && !data)
+      {
+        data = new (GC) Syntax*[v->len];
+        std::memcpy( data, v->m_data, sizeof(data[0])*i );
+      }
+      if (data)
+        data[i] = tmp;
+    }
+    if (data || v->mark != NULL)
+      d = new SyntaxVector( v->coords, data, v->len, NULL );
+  }
+  else
+    d = d->wrap(mark);
+
   return d;
 }
 
@@ -248,13 +239,13 @@ void SyntaxPair::toStream ( std::ostream & os ) const
   for(;;)
   {
     p->m_car->toStream( os );
-    if (p->m_cdr->isNil())
+    if (isa<SyntaxNil>(p->m_cdr))
     {
       break;
     }
-    else if (p->m_cdr->skind == SyntaxKind::PAIR)
+    else if (isa<SyntaxPair>(p->m_cdr))
     {
-      p = static_cast<const SyntaxPair *>(p->m_cdr);
+      p = cast<SyntaxPair>(p->m_cdr);
       os << " ";
     }
     else
@@ -355,7 +346,7 @@ bool SyntaxVector::equal ( const Syntax * x ) const
 void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax * datum )
 {
   //os << datum->coords.line << ':' << datum->coords.column << ':';
-  if (datum->isNil())
+  if (isa<SyntaxNil>(datum))
     os << "()";
   else if (datum->skind == SyntaxKind::VECTOR)
   {
@@ -384,7 +375,7 @@ void Syntax::toStreamIndented ( std::ostream & os, unsigned indent, const Syntax
       }
 
       toStreamIndented( os, indent, p->m_car);
-      if (p->m_cdr->isNil())
+      if (isa<SyntaxNil>(p->m_cdr))
         break;
 
       if (p->m_cdr->skind == SyntaxKind::PAIR)
