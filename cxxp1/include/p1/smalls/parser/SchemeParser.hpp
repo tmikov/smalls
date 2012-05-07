@@ -74,7 +74,7 @@ public:
   SchemeParser( SymbolTable & symbolTable, AbstractErrorReporter & errors );
   ~SchemeParser();
 
-  ListOfAst compileLibraryBody ( Syntax * datum );
+  AstModule * compileLibraryBody ( Syntax * datum );
 
 private:
   typedef std::list<Syntax *,gc_allocator<SyntaxPair *> > DatumList;
@@ -102,29 +102,31 @@ private:
   Binding * m_unspec;
   Mark * const m_antiMark;
 
-  ListOfAst compileBody ( Context * ctx, Syntax * datum );
+  AstBody * compileBody ( Context * ctx, Syntax * datum );
   void parseBody ( Context * ctx, Syntax * datum);
   void processBodyForm ( Context * ctx, Syntax * datum );
   void recordDefine ( Context * ctx, SyntaxPair * form );
 
   Syntax * expandMacro ( Context * ctx, Macro * macro, SyntaxPair * pair );
 
-  ListOfAst convertLetRecStar ( Context * ctx );
-
-  ListOfAst compileExpression ( Context * ctx, Syntax * expr );
-  ListOfAst compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords );
-  ListOfAst compileCall ( Context * ctx, SyntaxPair * call );
-  ListOfAst compileResForm ( Context * ctx, SyntaxPair * pair, Binding * bndCar );
-  ListOfAst compileBegin ( Context * ctx, SyntaxPair * beginPair );
-  ListOfAst compileSetBang ( Context * ctx, SyntaxPair * setPair );
-  ListOfAst compileIf ( Context * ctx, SyntaxPair * ifPair );
-  ListOfAst compileLambda ( Context * ctx, SyntaxPair * lambdaPair );
-  ListOfAst compileLet ( Context * ctx, SyntaxPair * letPair );
-  ListOfAst compileBasicLet ( Context * ctx, SyntaxPair * letPair );
-  ListOfAst compileNamedLet ( Context * ctx, SyntaxPair * letPair );
+  Ast * compileExpression ( Context * ctx, Syntax * expr );
+  Ast * compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords );
+  Ast * compileCall ( Context * ctx, SyntaxPair * call );
+  Ast * compileResForm ( Context * ctx, SyntaxPair * pair, Binding * bndCar );
+  Ast * compileBegin ( Context * ctx, SyntaxPair * beginPair );
+  Ast * compileSetBang ( Context * ctx, SyntaxPair * setPair );
+  Ast * compileIf ( Context * ctx, SyntaxPair * ifPair );
+  Ast * compileLambda ( Context * ctx, SyntaxPair * lambdaPair );
+  Ast * compileLet ( Context * ctx, SyntaxPair * letPair );
+  Ast * compileBasicLet ( Context * ctx, SyntaxPair * letPair );
+  Ast * compileNamedLet ( Context * ctx, SyntaxPair * letPair );
   bool splitLetParams ( Syntax * p0, DatumList & varDatums, DatumList & valueDatums );
 
-  ListOfAst makeUnspecified ( Syntax * where );
+  static Ast * makeUnspecified ( const SourceCoords & coords );
+  static Ast * makeUnspecified ( Syntax * where )
+  {
+    return makeUnspecified( where->coords );
+  }
 
   bool needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp );
 

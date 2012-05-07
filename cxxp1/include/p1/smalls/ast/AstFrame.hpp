@@ -19,6 +19,7 @@
 #ifndef P1_SMALLS_AST_ASTFRAME_HPP
 #define	P1_SMALLS_AST_ASTFRAME_HPP
 
+#include "p1/smalls/common/SourceCoords.hpp"
 #include "p1/util/gc-support.hpp"
 #include "p1/adt/CircularList.hpp"
 
@@ -38,9 +39,10 @@ class AstVariable : public p1::ListEntry, public gc
 public:
   const gc_char * const name;
   AstFrame * const frame;
+  SourceCoords defCoords;
 
-  AstVariable ( const gc_char * name_, AstFrame * frame_ )
-    : name(name_), frame(frame_)
+  AstVariable ( const gc_char * name_, AstFrame * frame_, const SourceCoords & defCoords_ )
+    : name(name_), frame(frame_), defCoords(defCoords_)
   {
     ListEntry::debugClear();
   }
@@ -60,8 +62,8 @@ public:
     m_tmpCount = 0;
   }
 
-  AstVariable * newVariable ( const gc_char * name );
-  AstVariable * newAnonymous ( const gc_char * infoPrefix );
+  AstVariable * newVariable ( const gc_char * name, const SourceCoords & defCoords );
+  AstVariable * newAnonymous ( const gc_char * infoPrefix, const SourceCoords & defCoords );
 
 private:
   typedef p1::CircularList<AstVariable> VariableList;

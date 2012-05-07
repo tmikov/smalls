@@ -81,7 +81,7 @@ int main ( int argc, const char ** argv )
   }
 
   SchemeParser par( symTab, errors );
-  std::cout << par.compileLibraryBody( body );
+  std::cout << *par.compileLibraryBody( body );
 
   return 0;
 }

@@ -31,25 +31,32 @@ const char * AstKind::s_names[] =
 };
 #undef _MK_ENUM
 
-std::ostream & operator<< ( std::ostream & os, const ListOfAst & lst )
+std::ostream & printListOfAst ( std::ostream & os, const ListOfAst & lst, const char * tag )
 {
   if (lst.empty())
-    return os << "()";
+    return os;
 
   if (!lst.next(lst.first()))
     return os << *lst.first();
 
-  os << "(begin" << OStreamSetIndent(+4);
+  if (tag)
+    os << "(" << tag << OStreamSetIndent(+4);
 
   for ( ListOfAst::const_iterator ast = lst.begin(); ast != lst.end(); ++ast )
-  {
     os << '\n' << OStreamIndent() << *ast;
-  }
-  os << ")";
 
-  os << OStreamSetIndent(-4);
+  if (tag)
+  {
+    os << ")";
+    os << OStreamSetIndent(-4);
+  }
 
   return os;
+}
+
+std::ostream & operator<< ( std::ostream & os, const ListOfAst & lst )
+{
+  return printListOfAst( os, lst, "begin" );
 }
 
 void Ast::toStream ( std::ostream & os ) const
@@ -74,16 +81,16 @@ void AstSet::toStream ( std::ostream & os ) const
   os << '(' << AstKind::name( this->kind ) << '\n'
      << OStreamSetIndent(+4)
      << OStreamIndent() << *this->target << '\n'
-     << OStreamIndent() << this->rvalue << ')'
+     << OStreamIndent() << *this->rvalue << ')'
      << OStreamSetIndent(-4);
 }
 
 void AstApply::toStream ( std::ostream & os ) const
 {
-  os << '(' << AstKind::name( this->kind ) << ' ' << this->target << ' ';
+  os << '(' << AstKind::name( this->kind ) << ' ' << *this->target << ' ';
 
-  BOOST_FOREACH( ListOfAst & lst, *this->params )
-    os << lst << ' ';
+  BOOST_FOREACH( Ast * ast, *this->params )
+    os << *ast << ' ';
 
   if (this->listParam)
     os << *this->listParam;
@@ -97,10 +104,59 @@ void AstIf::toStream ( std::ostream & os ) const
 {
   os << '(' << AstKind::name( this->kind ) << '\n'
      << OStreamSetIndent(+4)
-     << OStreamIndent() << this->cond << '\n'
-     << OStreamIndent() << this->thenAst << '\n'
-     << OStreamIndent() << this->elseAst << ')'
+     << OStreamIndent() << *this->cond << '\n'
+     << OStreamIndent() << *this->thenAst;
+  if (this->elseAst)
+  {
+    os << '\n'
+       << OStreamIndent() << *this->elseAst;
+  }
+
+  os << ')'
      << OStreamSetIndent(-4);
+}
+
+void AstBegin::toStream ( std::ostream & os ) const
+{
+  os << m_exprList;
+}
+
+void AstBody::toStream ( std::ostream & os ) const
+{
+  if (m_defs.empty())
+  {
+    printListOfAst( os, m_exprList, "BODY");
+    return;
+  }
+
+  os << "(LETREC*\n"
+     << OStreamSetIndent(+4)
+     << OStreamIndent() << "("
+     << OStreamSetIndent(+4);
+
+  BOOST_FOREACH( const AstBody::Definition & defn, m_defs )
+  {
+    os << '\n'
+       << OStreamIndent() << '(';
+
+    if (defn.first)
+      os << *defn.first;
+    else
+      os << "<unused>";
+    os << " ";
+    os << *defn.second;
+
+    os << ')';
+  }
+
+  os << ')'
+     << OStreamSetIndent(-8)
+     << "\n"
+     << OStreamSetIndent(+4)
+     << OStreamIndent();
+  printListOfAst( os, m_exprList, NULL );
+  os << OStreamSetIndent(-4)
+     << ')';
 }
 
 void AstClosure::toStream ( std::ostream & os ) const
@@ -121,7 +177,7 @@ void AstClosure::toStream ( std::ostream & os ) const
   }
   os << ')' << '\n'
      << OStreamSetIndent(+4)
-     << OStreamIndent() << this->body
+     << OStreamIndent() << *this->body
      << ')'
      << OStreamSetIndent(-4);
 }
@@ -134,42 +190,42 @@ void AstLet::toStream ( std::ostream & os ) const
 
   for ( unsigned i = 0, end = params->size(); i != end; ++i )
   {
-    os << '\n' << OStreamIndent() << '(' << *(*params)[i] << ' ' << (*values)[i] << ')';
+    os << '\n' << OStreamIndent() << '(' << *(*params)[i] << ' ' << *(*values)[i] << ')';
   }
   os << ')' << OStreamSetIndent(-4);
 
   os << '\n'
-     << OStreamIndent() << this->body
+     << OStreamIndent() << *this->body
      << ')'
      << OStreamSetIndent(-4);
 }
 
 AstFix::AstFix (
   const SourceCoords & coords_,
-  AstFrame * enclosingFrame,
-  VectorOfVariable * params,
   AstFrame * paramFrame,
-  AstFrame * bodyFrame,
-  const ListOfAst & body,
-  VectorOfListOfAst * values
+  VectorOfVariable * params,
+  AstBody * body_,
+  VectorOfAst * values
 ) : AstLet(
       AstKind::FIX,
       coords_,
-      enclosingFrame,
-      params,
       paramFrame,
-      bodyFrame,
-      body,
+      params,
+      body_,
       values
     )
 {
 #ifndef NDEBUG
-  BOOST_FOREACH( ListOfAst & init, *values )
+  BOOST_FOREACH( Ast * init, *values )
   {
-    assert( !init.empty() );
-    assert( init.first()->kind == AstKind::CLOSURE );
+    assert( init && init->kind == AstKind::CLOSURE );
   }
 #endif
+}
+
+std::ostream & operator<< ( std::ostream & os, AstModule & mod )
+{
+  return os << *mod.body();
 }
 
 }} // namespaces

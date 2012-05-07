@@ -119,17 +119,85 @@ SchemeParser::~SchemeParser ()
 {
 }
 
-ListOfAst SchemeParser::compileLibraryBody ( Syntax * datum )
+AstModule * SchemeParser::compileLibraryBody ( Syntax * datum )
 {
   Context * ctx = new Context( m_symbolTable.newScope(), new AstFrame(NULL) );
-  return compileBody( ctx, datum );
+  return new AstModule( compileBody( ctx, datum ) );
 }
 
-ListOfAst SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax * datum )
+AstBody * SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax * datum )
 {
   parseBody( ctx, datum );
-  return convertLetRecStar( ctx );
+
+  AstBody * body = new AstBody( datum->coords, ctx->frame );
+
+  BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
+  {
+    body->defs().push_back( AstBody::Definition(
+      defn.first ? defn.first->var() : NULL,
+      compileExpression( ctx, defn.second )
+    ));
+  }
+
+  BOOST_FOREACH( Syntax * expr, ctx->exprList )
+    body->exprList() += compileExpression( ctx, expr );
+
+  return body;
 }
+
+#if 0
+Ast * SchemeParser::convertLetRecStar ( AstBody * bodyAst )
+{
+  if (bodyAst->defs().empty())
+    return bodyAst->exprList();
+
+/*
+Trivial conversion to let.
+
+  (define-syntax letrec*
+    (syntax-rules ()
+      ((letrec* ((var1 init1) ...) body1 body2 ...)
+        (let ((var1 <undefined>) ...)
+          (set! var1 init1)
+          ...
+          (let () body1 body2 ...)))))
+*/
+
+  // Note that we don't generate the inner "(let () body1 body2 ...)" because we know
+  // for sure that it isn't necessary in our case (not general letrec*, but generating the body;
+  // we know there are no definitions in the body).
+
+  VectorOfVariable * vars = new (GC) VectorOfVariable();
+  VectorOfAst * values = new (GC) VectorOfAst();
+
+  ListOfAst body;
+  BOOST_FOREACH( AstBody::Definition & defn, bodyAst->defs() )
+  {
+    if (defn.first)
+    {
+      vars->push_back( defn.first );
+      values->push_back( makeUnspecified(defn.first->defCoords) );
+      body += new AstSet( defn.first->defCoords, defn.first, defn.second );
+    }
+    else
+      body.destructiveAppend( defn.second );
+  }
+
+  body.destructiveAppend( bodyAst->exprList() );
+
+  // Create a dummy body frame
+  // FIXME: WTF??
+  AstFrame * letBodyFrame = new AstFrame(bodyAst->frame());
+
+  return makeListOfAst(new AstLet(
+    bodyAst->coords,
+    bodyAst->frame(),
+    vars,
+    body,
+    values
+  ));
+}
+#endif
 
 void SchemeParser::parseBody ( SchemeParser::Context * ctx, Syntax * datum )
 {
@@ -222,7 +290,7 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
   {
     if (bindSyntaxSymbol( bnd, ctx->scope, ss ))
     {
-      bnd->bindVar( ctx->frame->newVariable( bnd->sym->name ) );
+      bnd->bindVar( ctx->frame->newVariable( bnd->sym->name, ss->coords ) );
     }
     else
     {
@@ -253,13 +321,17 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
 Syntax * SchemeParser::expandMacro ( Context * ctx, Macro * macro, SyntaxPair * pair )
 {
   Syntax * wrapped = pair->wrap( m_antiMark );
+#if 0
   std::cout << "\nWrapped:\n" << *wrapped << "\n";
+#endif
   // FIXME: validate the result - make sure it is non-cyclic
   Syntax * expanded;
   try
   {
     expanded = macro->expand( wrapped );
+#if 0
     std::cout << "\nExpanded:\n" << *expanded << "\n";
+#endif
   }
   catch (ErrorInfo & ei)
   {
@@ -267,8 +339,10 @@ Syntax * SchemeParser::expandMacro ( Context * ctx, Macro * macro, SyntaxPair * 
     return NULL;
   }
   Syntax * result = expanded->wrap( new Mark(m_symbolTable.nextMarkStamp(), macro->scope, NULL) );
+#if 0
   std::cout << "\nResult:\n" << *result << "\n";
   std::cout << "\nExpanded-Result:\n" << *unwrapCompletely(result) << "\n\n\n";
+#endif
   return result;
 }
 
@@ -333,101 +407,12 @@ Syntax * MacroOr::expand ( Syntax * datum )
   return let.toList();
 }
 
-ListOfAst SchemeParser::convertLetRecStar ( Context * ctx )
-{
-  if (ctx->defnList.empty())
-  {
-    ListOfAst body;
-
-    BOOST_FOREACH( Syntax * expr, ctx->exprList )
-    {
-      ListOfAst tmp = compileExpression( ctx, expr );
-      body.destructiveAppend( tmp );
-    }
-
-    if (body.empty())
-      body += new Ast(AstKind::UNSPECIFIED, SourceCoords());
-
-    return body;
-  }
-  else
-  {
-  /*
-  Trivial conversion to let.
-
-    (define-syntax letrec*
-      (syntax-rules ()
-        ((letrec* ((var1 init1) ...) body1 body2 ...)
-          (let ((var1 <undefined>) ...)
-            (set! var1 init1)
-            ...
-            (let () body1 body2 ...)))))
-  */
-
-    // Note that we don't generate the inner "(let () body1 body2 ...)" because we know
-    // for sure that it isn't necessary in our case (not general letrec*, but generating the body;
-    // we know there are no definitions in the body).
-
-    VectorOfVariable * vars = new (GC) VectorOfVariable();
-    VectorOfListOfAst * values = new (GC) VectorOfListOfAst();
-    AstFrame * paramFrame = ctx->frame;
-
-    // Build the let initialization
-    BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
-    {
-      if (defn.first)
-        vars->push_back( defn.first->var() );
-      else
-        vars->push_back( ctx->frame->newAnonymous("") );
-      values->push_back( makeUnspecified(defn.second) );
-    }
-
-    // Create a dummy body frame
-    ctx->frame = new AstFrame(ctx->frame);
-
-    ListOfAst body;
-    VectorOfVariable::const_iterator vit = vars->begin();
-    DeferredDefineList::const_iterator dit = ctx->defnList.begin();
-    DeferredDefineList::const_iterator dit_end = ctx->defnList.end();
-    for ( ; dit != dit_end; ++vit, ++dit )
-    {
-      const DeferredDefine & defn = *dit;
-      AstVariable * var = *vit;
-
-      body += new AstSet( defn.second->coords, var, compileExpression( ctx, defn.second ) );
-    }
-
-    BOOST_FOREACH( Syntax * expr, ctx->exprList )
-    {
-      ListOfAst tmp = compileExpression( ctx, expr );
-      body.destructiveAppend( tmp );
-    }
-
-    SourceCoords coords;
-    if (!ctx->defnList.empty())
-      coords = ctx->defnList.front().second->coords;
-
-    if (body.empty())
-      body += new Ast(AstKind::UNSPECIFIED, coords);
-
-    return makeListOfAst(new AstLet(
-      coords,
-      paramFrame->parent,
-      vars,
-      paramFrame,
-      ctx->frame, // a dummy body frame
-      body,
-      values
-    ));
-  }
-}
-
-ListOfAst SchemeParser::compileExpression ( SchemeParser::Context * ctx, Syntax * expr )
+Ast * SchemeParser::compileExpression ( SchemeParser::Context * ctx, Syntax * expr )
 {
 tail_recursion:
   if (SyntaxValue * sv = dyn_cast<SyntaxValue>(expr))
   {
-    return makeListOfAst( new AstDatum( expr->coords, sv ) );
+    return new AstDatum( expr->coords, sv );
   }
   else if (SyntaxVector * svec = dyn_cast<SyntaxVector>(expr))
   {
@@ -473,12 +458,12 @@ unspec:
   return makeUnspecified(expr);
 }
 
-ListOfAst SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords )
+Ast * SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords )
 {
   if (bnd != m_unspec)
   {
     if (bnd->kind() == BindingKind::VAR)
-      return makeListOfAst( new AstVar(exprForCoords->coords, bnd->var()) );
+      return new AstVar(exprForCoords->coords, bnd->var());
     else
       error( exprForCoords, "Undefined variable '%s'", bnd->sym->name );
   }
@@ -486,10 +471,10 @@ ListOfAst SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax * 
 }
 
 
-ListOfAst SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * pair )
+Ast * SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * pair )
 {
-  ListOfAst target = compileExpression( ctx, pair->car() );
-  VectorOfListOfAst * params = new VectorOfListOfAst();
+  Ast * target = compileExpression( ctx, pair->car() );
+  VectorOfAst * params = new VectorOfAst();
   Syntax * n = pair->cdr();
   while (!isa<SyntaxNil>(n))
   {
@@ -500,14 +485,14 @@ ListOfAst SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * 
     n = expr->cdr();
   }
 
-  return makeListOfAst( new AstApply( pair->coords, target, params, NULL ) );
+  return new AstApply( pair->coords, target, params, NULL );
 }
 
 
 /**
  * Compile a (reserved-word ...) form
  */
-ListOfAst SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair * pair, Binding * bndCar )
+Ast * SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair * pair, Binding * bndCar )
 {
   switch (bndCar->resWord())
   {
@@ -528,34 +513,25 @@ ListOfAst SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair
   }
 }
 
-ListOfAst SchemeParser::compileBegin ( SchemeParser::Context * ctx, SyntaxPair * beginPair )
+Ast * SchemeParser::compileBegin ( SchemeParser::Context * ctx, SyntaxPair * beginPair )
 {
-  ListOfAst result;
+  AstBegin * begin = new AstBegin( beginPair->car()->coords );
   Syntax * n = beginPair->cdr();
-
-  // Don't return an empty list
-  if (isa<SyntaxNil>(n))
-    return makeUnspecified(beginPair);
 
   while (!isa<SyntaxNil>(n))
   {
     SyntaxPair * p = needPair( "", n );
     if (!p)
-    {
-      // We never want to return an empty AST
-      if (result.empty())
-        result = makeUnspecified(beginPair);
-    }
+      break;
 
+    begin->exprList() += compileExpression( ctx, p->car() );
     n = p->cdr();
-    ListOfAst tmp = compileExpression( ctx, p->car() );
-    result.destructiveAppend( tmp );
   }
 
-  return result;
+  return begin;
 }
 
-ListOfAst SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair * setPair )
+Ast * SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair * setPair )
 {
   Syntax * ps[2];
 
@@ -590,12 +566,12 @@ ListOfAst SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair
 
   // Value
   //
-  ListOfAst value = compileExpression( ctx, ps[1] );
+  Ast * value = compileExpression( ctx, ps[1] );
 
-  return makeListOfAst(new AstSet( setPair->car()->coords, bnd->var(), value ));
+  return new AstSet( setPair->car()->coords, bnd->var(), value );
 }
 
-ListOfAst SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * ifPair )
+Ast * SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * ifPair )
 {
   Syntax * ps[2];
   SyntaxPair * restp;
@@ -603,13 +579,11 @@ ListOfAst SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * if
   if (!needParams( "if", ifPair->cdr(), 2, ps, &restp ))
     return makeUnspecified(ifPair);
 
-  ListOfAst cond = compileExpression( ctx, ps[0] );
-  ListOfAst thenAst = compileExpression( ctx, ps[1] );
-  ListOfAst elseAst;
+  Ast * cond = compileExpression( ctx, ps[0] );
+  Ast * thenAst = compileExpression( ctx, ps[1] );
+  Ast * elseAst = NULL;
 
-  if (isa<SyntaxNil>(restp))
-    elseAst += new Ast(AstKind::UNSPECIFIED, restp->coords );
-  else
+  if (!isa<SyntaxNil>(restp))
   {
     elseAst = compileExpression( ctx, restp->car() );
 
@@ -617,10 +591,10 @@ ListOfAst SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * if
       error( restp->cdr(), "if: form list is too long" );
   }
 
-  return makeListOfAst( new AstIf( ifPair->car()->coords, cond, thenAst, elseAst ) );
+  return new AstIf( ifPair->car()->coords, cond, thenAst, elseAst );
 }
 
-ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair * lambdaPair )
+Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair * lambdaPair )
 {
   Syntax * p0;
   SyntaxPair * restp;
@@ -639,7 +613,7 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
   {
     Binding * bnd;
     bindSyntaxSymbol( bnd, paramScope, ss );
-    bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+    bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
     listParam = bnd->var();
   }
   else if (SyntaxPair * params = dyn_cast<SyntaxPair>(p0)) // a list of formal parameters
@@ -652,13 +626,13 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
         Binding * bnd;
         if (bindSyntaxSymbol( bnd, paramScope, ss ))
         {
-          bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+          bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
           vars->push_back( bnd->var() );
         }
         else
         {
           error( curParam, "Duplicated lambda parameter '%s'", ss->symbol->name );
-          vars->push_back( paramFrame->newAnonymous( ss->symbol->name ) );
+          vars->push_back( paramFrame->newAnonymous( ss->symbol->name, ss->coords ) );
         }
       }
       else
@@ -678,13 +652,13 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
         Binding * bnd;
         if (bindSyntaxSymbol( bnd, paramScope, ss ))
         {
-          bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+          bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
           listParam = bnd->var();
         }
         else
         {
           error( curParam, "Duplicated lambda parameter '%s'", ss->symbol->name );
-          listParam = paramFrame->newAnonymous( ss->symbol->name );
+          listParam = paramFrame->newAnonymous( ss->symbol->name, ss->coords );
         }
       }
       else
@@ -698,30 +672,28 @@ ListOfAst SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair 
   }
 
 
-  ListOfAst body;
   Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
+  AstBody * body;
   if (!isa<SyntaxNil>(restp))
     body = compileBody( bodyCtx, restp );
   else
   {
     error( restp, "lambda requires a body" );
-    body = makeUnspecified( restp );
+    body = new AstBody( restp->coords, bodyCtx->frame );
   }
 
-  return makeListOfAst(new AstClosure(
+  return new AstClosure(
     lambdaPair->car()->coords,
-    ctx->frame,
+    paramFrame,
     vars,
     listParam,
-    paramFrame,
-    bodyCtx->frame,
     body
-  ));
+  );
 }
 
-ListOfAst SchemeParser::compileLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
+Ast * SchemeParser::compileLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
 {
   if (SyntaxPair * p = dyn_cast<SyntaxPair>(letPair->cdr()))
     if (p->car()->skind == SyntaxKind::PAIR || isa<SyntaxNil>(p->car()))
@@ -733,7 +705,7 @@ ListOfAst SchemeParser::compileLet ( SchemeParser::Context * ctx, SyntaxPair * l
   return makeUnspecified(letPair);
 }
 
-ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
+Ast * SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
 {
   Syntax * p0;
   SyntaxPair * restp;
@@ -777,7 +749,7 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
   }
 
   // Compile the initialization expressions
-  VectorOfListOfAst * values = new (GC) VectorOfListOfAst();
+  VectorOfAst * values = new (GC) VectorOfAst();
 
   BOOST_FOREACH( Syntax * expr, valueDatums )
     values->push_back( compileExpression( ctx, expr ) );
@@ -797,13 +769,13 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
       Binding * bnd;
       if (bindSyntaxSymbol( bnd, paramScope, ss ))
       {
-        bnd->bindVar( paramFrame->newVariable( bnd->sym->name ) );
+        bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
         vars->push_back( bnd->var() );
       }
       else
       {
         error( curParam, "let: duplicated variable '%s'", ss->symbol->name );
-        vars->push_back( paramFrame->newAnonymous( ss->symbol->name ) );
+        vars->push_back( paramFrame->newAnonymous( ss->symbol->name, ss->coords ) );
       }
     }
     else
@@ -812,31 +784,29 @@ ListOfAst SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPai
 
   // Parse the body
   //
-  ListOfAst body;
   Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
+  AstBody * body;
   if (!isa<SyntaxNil>(restp))
     body = compileBody( bodyCtx, restp );
   else
   {
     error( restp, "let requires a body" );
-    body = makeUnspecified( restp );
+    body = new AstBody( restp->coords, bodyCtx->frame );
   }
 
-  return makeListOfAst(new AstLet(
+  return new AstLet(
     letPair->car()->coords,
-    ctx->frame,
-    vars,
     paramFrame,
-    bodyCtx->frame,
+    vars,
     body,
     values
-  ));
+  );
 }
 
 // FIXME
-ListOfAst SchemeParser::compileNamedLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
+Ast * SchemeParser::compileNamedLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
 {
   Syntax * ps[2];
   SyntaxPair * restp;
@@ -890,9 +860,9 @@ bool SchemeParser::splitLetParams ( Syntax * p0, DatumList & varDatums, DatumLis
   return true;
 }
 
-ListOfAst SchemeParser::makeUnspecified ( Syntax * where )
+Ast * SchemeParser::makeUnspecified ( const SourceCoords & coords )
 {
-  return makeListOfAst( new Ast(AstKind::UNSPECIFIED, where->coords) );
+  return new Ast(AstKind::UNSPECIFIED, coords);
 }
 
 bool SchemeParser::needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp )
