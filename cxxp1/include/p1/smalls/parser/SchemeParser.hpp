@@ -26,52 +26,16 @@
 
 namespace p1 {
 namespace smalls {
+  class Keywords;
+}}
 
-namespace detail {
-
-class ReservedBindings : public gc
-{
-public:
-  Scope * const scope;
-
-  ReservedSymbols sym;
-
-  Binding * const bind_quote;
-  Binding * const bind_quasiquote;
-  Binding * const bind_unquote;
-  Binding * const bind_unquote_splicing;
-  Binding * const bind_syntax;
-  Binding * const bind_quasisyntax;
-  Binding * const bind_unsyntax;
-  Binding * const bind_unsyntax_splicing;
-
-  Binding * const bind_if;
-  Binding * const bind_begin;
-  Binding * const bind_lambda;
-  Binding * const bind_define;
-  Binding * const bind_setbang;
-  Binding * const bind_let;
-  Binding * const bind_letrec;
-  Binding * const bind_letrec_star;
-
-  Binding * const bind_builtin;
-  Binding * const bind_define_macro;
-  Binding * const bind_define_identifier_macro;
-  Binding * const bind_define_set_macro;
-  Binding * const bind_macro_env;
-
-  ReservedBindings ( SymbolTable & map, Scope * scope );
-
-private:
-  static Binding * bind ( Scope * scope, Symbol * sym, ResWord::Enum resCode );
-};
-
-} // namespace detail
+namespace p1 {
+namespace smalls {
 
 class SchemeParser : public gc
 {
 public:
-  SchemeParser( SymbolTable & symbolTable, AbstractErrorReporter & errors );
+  SchemeParser( SymbolTable & symbolTable, const Keywords & kw, AbstractErrorReporter & errors );
   ~SchemeParser();
 
   AstModule * compileLibraryBody ( Syntax * datum );
@@ -96,11 +60,12 @@ private:
 
   SymbolTable & m_symbolTable;
   Scope * m_systemScope;
-  detail::ReservedBindings m_rsv;
   AbstractErrorReporter & m_errors;
 
-  Binding * m_unspec;
   Mark * const m_antiMark;
+  AstFrame * m_systemFrame; // the frame containing the system symbols
+  Binding * m_bindBegin; // the "begin" system binding. We need it occasionally
+  Binding * m_unspec;
 
   AstBody * compileBody ( Context * ctx, Syntax * datum );
   void parseBody ( Context * ctx, Syntax * datum);

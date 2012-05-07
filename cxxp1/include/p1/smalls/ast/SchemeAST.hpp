@@ -103,6 +103,17 @@ std::ostream & operator<< ( std::ostream & os, const ListOfAst & lst );
 
 typedef std::vector<Ast*, gc_allocator<Ast*> > VectorOfAst;
 
+class AstUnspecified : public Ast
+{
+public:
+  AstUnspecified ( const SourceCoords & coords_ )
+    : Ast( AstKind::UNSPECIFIED, coords_ )
+  {}
+
+  static bool classof ( const AstUnspecified * ) { return true; }
+  static bool classof ( const Ast * t ) { return t->kind == AstKind::UNSPECIFIED; }
+};
+
 class AstVar : public Ast
 {
 public:
@@ -327,15 +338,18 @@ public:
 class AstModule : public gc
 {
 public:
-  AstModule ( AstBody * body )
-    : m_body( body )
+  AstModule ( AstFrame * systemFrame, AstBody * body )
+    : m_systemFrame( systemFrame ), m_body( body )
   {}
   AstModule () {}
+
+  AstFrame * systemFrame () { return m_systemFrame; }
 
   AstBody * body () { return m_body; }
   void setBody ( AstBody * body ) { m_body = body; }
 
 private:
+  AstFrame * m_systemFrame;
   AstBody *  m_body;
 };
 

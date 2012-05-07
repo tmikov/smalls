@@ -21,54 +21,26 @@
 
 #include "Lexer.hpp"
 #include "Syntax.hpp"
+#include "Keywords.hpp"
 
 namespace p1 {
 namespace smalls {
 
-
-class ReservedSymbols : public gc
-{
-public:
-  Symbol * const sym_quote;
-  Symbol * const sym_quasiquote;
-  Symbol * const sym_unquote;
-  Symbol * const sym_unquote_splicing;
-  Symbol * const sym_syntax;
-  Symbol * const sym_quasisyntax;
-  Symbol * const sym_unsyntax;
-  Symbol * const sym_unsyntax_splicing;
-
-  Symbol * const sym_if;
-  Symbol * const sym_begin;
-  Symbol * const sym_lambda;
-  Symbol * const sym_define;
-  Symbol * const sym_setbang;
-  Symbol * const sym_let;
-  Symbol * const sym_letrec;
-  Symbol * const sym_letrec_star;
-
-  Symbol * const sym_builtin;
-  Symbol * const sym_define_macro;
-  Symbol * const sym_define_identifier_macro;
-  Symbol * const sym_define_set_macro;
-  Symbol * const sym_macro_env;
-
-  ReservedSymbols ( SymbolTable & map );
-};
-
 class SyntaxReader : public gc
 {
 public:
-  SyntaxReader ( Lexer & lex );
+  SyntaxReader ( Lexer & lex, const Keywords & kw );
 
   Syntax * parseDatum ();
+
+  const Keywords & keywords () const { return m_kw; }
 
   Syntax * const DAT_EOF;
   Syntax * const DAT_COM;
 private:
   Lexer & m_lex;
   Token m_tok;
-  ReservedSymbols m_rsv;
+  const Keywords & m_kw;
   SourceCoords m_coords;
 
   TokenKind::Enum next ()

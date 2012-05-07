@@ -16,58 +16,18 @@
 */
 #include "SchemeParser.hpp"
 #include "ListBuilder.hpp"
+#include "SystemBindings.hpp"
+#include "Keywords.hpp"
 #include "p1/util/scopeguard.hpp"
 #include <boost/foreach.hpp>
 #include <iostream>
 
-using namespace p1;
-using namespace p1::smalls;
-using namespace p1::smalls::detail;
+namespace p1 {
+namespace smalls {
 
+using namespace detail;
 
-ReservedBindings::ReservedBindings ( SymbolTable & map, Scope * sc ) :
-  scope( sc ),
-  sym( map ),
-  bind_quote             ( bind( scope, sym.sym_quote, ResWord::QUOTE ) ),
-  bind_quasiquote        ( bind( scope, sym.sym_quasiquote, ResWord::NONE /*SymCode::QUASIQUOTE*/ ) ),
-  bind_unquote           ( bind( scope, sym.sym_unquote, ResWord::NONE /*SymCode::UNQUOTE*/ ) ),
-  bind_unquote_splicing  ( bind( scope, sym.sym_unquote_splicing, ResWord::NONE /*SymCode::UNQUOTE_SPLICING*/ ) ),
-  bind_syntax            ( bind( scope, sym.sym_syntax, ResWord::SYNTAX ) ),
-  bind_quasisyntax       ( bind( scope, sym.sym_quasisyntax, ResWord::QUASISYNTAX ) ),
-  bind_unsyntax          ( bind( scope, sym.sym_unsyntax, ResWord::UNSYNTAX ) ),
-  bind_unsyntax_splicing ( bind( scope, sym.sym_unsyntax_splicing, ResWord::UNSYNTAX_SPLICING ) ),
-
-  bind_if                ( bind( scope, sym.sym_if, ResWord::IF ) ),
-  bind_begin             ( bind( scope, sym.sym_begin, ResWord::BEGIN ) ),
-  bind_lambda            ( bind( scope, sym.sym_lambda, ResWord::LAMBDA ) ),
-  bind_define            ( bind( scope, sym.sym_define, ResWord::DEFINE ) ),
-  bind_setbang           ( bind( scope, sym.sym_setbang, ResWord::SETBANG ) ),
-  bind_let               ( bind( scope, sym.sym_let, ResWord::LET ) ),
-  bind_letrec            ( bind( scope, sym.sym_letrec, ResWord::LETREC ) ),
-  bind_letrec_star       ( bind( scope, sym.sym_letrec_star, ResWord::LETREC_STAR ) ),
-
-  bind_builtin           ( bind( scope, sym.sym_builtin, ResWord::BUILTIN ) ),
-  bind_define_macro      ( bind( scope, sym.sym_define_macro, ResWord::DEFINE_MACRO ) ),
-  bind_define_identifier_macro ( bind( scope, sym.sym_define_identifier_macro, ResWord::DEFINE_IDENTIFIER_MACRO ) ),
-  bind_define_set_macro  ( bind( scope, sym.sym_define_set_macro, ResWord::DEFINE_SET_MACRO ) ),
-  bind_macro_env         ( bind( scope, sym.sym_macro_env, ResWord::MACRO_ENV ) )
-{}
-
-Binding * ReservedBindings::bind ( Scope * scope, Symbol * sym, ResWord::Enum resCode )
-{
-  Binding * res;
-  if (scope->bind( res, sym, SourceCoords() ))
-  {
-    res->bindResWord( resCode );
-    return res;
-  }
-  else
-  {
-    assert( false );
-    std::abort();
-    return NULL;
-  }
-}
+namespace {
 
 class MacroOr : public Macro
 {
@@ -95,13 +55,25 @@ public:
 };
 #endif
 
-SchemeParser::SchemeParser ( SymbolTable & symbolTable, AbstractErrorReporter & errors )
+} // anon namespace
+
+SchemeParser::SchemeParser ( SymbolTable & symbolTable, const Keywords & kw, AbstractErrorReporter & errors )
   : m_symbolTable( symbolTable ),
     m_systemScope( m_symbolTable.newScope() ),
-    m_rsv( symbolTable, m_systemScope ),
     m_errors( errors ),
     m_antiMark( new Mark( -1, NULL, NULL ) )
 {
+  assert( &symbolTable == &kw.symbolTable );
+
+  // Generate the reserved bindings
+  SystemBindings sysb( m_symbolTable, kw, m_systemScope );
+
+  // The system frame
+  m_systemFrame = sysb.frame;
+
+  // Extract the "begin" binding, which we need
+  m_bindBegin = sysb.bind_begin;
+
   // Create a synthetic binding for the unspecified value
   m_unspec = new Binding( m_symbolTable.newSymbol( "#unspecified" ), m_systemScope, SourceCoords() );
   m_unspec->bindResWord( ResWord::UNSPECIFIED );
@@ -121,8 +93,8 @@ SchemeParser::~SchemeParser ()
 
 AstModule * SchemeParser::compileLibraryBody ( Syntax * datum )
 {
-  Context * ctx = new Context( m_symbolTable.newScope(), new AstFrame(NULL) );
-  return new AstModule( compileBody( ctx, datum ) );
+  Context * ctx = new Context( m_symbolTable.newScope(), new AstFrame(m_systemFrame) );
+  return new AstModule( m_systemFrame, compileBody( ctx, datum ) );
 }
 
 AstBody * SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax * datum )
@@ -269,7 +241,7 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
     // Convert all deferred expressions to (define <unused> (begin expression... #undefined))
     ListBuilder lb;
     SourceCoords & coords = (*ctx->exprList.begin())->coords;
-    lb << new SyntaxBinding(coords, m_rsv.bind_begin);
+    lb << new SyntaxBinding(coords, m_bindBegin);
     BOOST_FOREACH( Syntax * expr, ctx->exprList )
       lb << expr;
     lb << new SyntaxBinding(coords, m_unspec);
@@ -862,7 +834,7 @@ bool SchemeParser::splitLetParams ( Syntax * p0, DatumList & varDatums, DatumLis
 
 Ast * SchemeParser::makeUnspecified ( const SourceCoords & coords )
 {
-  return new Ast(AstKind::UNSPECIFIED, coords);
+  return new AstUnspecified(coords);
 }
 
 bool SchemeParser::needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp )
@@ -986,3 +958,5 @@ void SchemeParser::error ( Syntax * where, const char * msg, ... )
   m_errors.verrorFormat( where->coords, msg, ap );
   va_end( ap );
 }
+
+}} // namespaces

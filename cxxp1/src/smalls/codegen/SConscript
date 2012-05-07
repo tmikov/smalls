@@ -1,0 +1,6 @@
+# src/smalls/codegen
+#
+Import("env")
+env = env.Clone()
+env.AppendUnique( CPPPATH=["$P1_INC_DIR/smalls/codegen"] )
+env['module']['p1::smalls::codegen'] = env.Object( env.Glob("*.cpp") )

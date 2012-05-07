@@ -1,6 +1,6 @@
-(define <)
-(define *)
-(define -)
+;(define <)
+;(define *)
+;(define -)
 
 #;(define fact (lambda (x)
   (let lp ((tot 1) (x x))
@@ -15,4 +15,5 @@
       (lp (* tot x)(- x 1)))))
   (lp 1 x)))
 
-(fact 100)
+(display (fact 4))
+

@@ -41,6 +41,11 @@ public:
     return fileName == fileName && line == x.line && column == x.column;
   }
 
+  bool full () const
+  {
+    return this->fileName && this->line && this->column;
+  }
+
   std::string toString () const;
 };
 

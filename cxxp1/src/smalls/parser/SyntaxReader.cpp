@@ -18,36 +18,11 @@
 #include "SymbolTable.hpp"
 #include "ListBuilder.hpp"
 #include "p1/util/format-str.hpp"
+#include "Keywords.hpp"
 
 using namespace p1;
 using namespace p1::smalls;
 using namespace p1::smalls::detail;
-
-ReservedSymbols::ReservedSymbols ( SymbolTable & map ) :
-  sym_quote             ( map.newSymbol( "quote" ) ),
-  sym_quasiquote        ( map.newSymbol( "quasiquote" ) ),
-  sym_unquote           ( map.newSymbol( "unquote" ) ),
-  sym_unquote_splicing  ( map.newSymbol( "unquote-splicing" ) ),
-  sym_syntax            ( map.newSymbol( "syntax" ) ),
-  sym_quasisyntax       ( map.newSymbol( "quasisyntax" ) ),
-  sym_unsyntax          ( map.newSymbol( "unsyntax" ) ),
-  sym_unsyntax_splicing ( map.newSymbol( "unsyntax-splicing" ) ),
-
-  sym_if                ( map.newSymbol( "if" ) ),
-  sym_begin             ( map.newSymbol( "begin" ) ),
-  sym_lambda            ( map.newSymbol( "lambda" ) ),
-  sym_define            ( map.newSymbol( "define" ) ),
-  sym_setbang           ( map.newSymbol( "set!" ) ),
-  sym_let               ( map.newSymbol( "let" ) ),
-  sym_letrec            ( map.newSymbol( "letrec" ) ),
-  sym_letrec_star       ( map.newSymbol( "letrec*" ) ),
-
-  sym_builtin           ( map.newSymbol( "__%builtin" ) ),
-  sym_define_macro      ( map.newSymbol( "define-macro" ) ),
-  sym_define_identifier_macro ( map.newSymbol( "define-identifier-macro" ) ),
-  sym_define_set_macro  ( map.newSymbol( "define-set-macro" ) ),
-  sym_macro_env         ( map.newSymbol( "macro-env" ) )
-{}
 
 static inline bool setContains ( unsigned set, TokenKind::Enum tok )
 {
@@ -59,12 +34,13 @@ static inline unsigned setAdd ( unsigned set, TokenKind::Enum tok )
   return set | (1 << tok);
 }
 
-SyntaxReader::SyntaxReader ( Lexer & lex )
+SyntaxReader::SyntaxReader ( Lexer & lex, const Keywords & kw )
   : DAT_EOF( new Syntax(SyntaxKind::DEOF, SourceCoords(NULL,0,0)) ),
     DAT_COM( new Syntax(SyntaxKind::COMMENT, SourceCoords(NULL,0,0)) ),
     m_lex( lex ),
-    m_rsv( lex.symbolTable() )
+    m_kw( kw )
 {
+  assert( &m_kw.symbolTable == &m_lex.symbolTable() );
   next();
 }
 
@@ -114,14 +90,14 @@ Syntax * SyntaxReader::read ( unsigned termSet )
     case TokenKind::HASH_LPAR:
       { SourceCoords coords=m_tok.coords(); next(); return vector( coords, TokenKind::RPAR, termSet ); }
 
-    case TokenKind::APOSTR:         return abbrev( m_rsv.sym_quote, termSet );
-    case TokenKind::ACCENT:         return abbrev( m_rsv.sym_quasiquote, termSet );
-    case TokenKind::COMMA:          return abbrev( m_rsv.sym_unquote, termSet );
-    case TokenKind::COMMA_AT:       return abbrev( m_rsv.sym_unquote_splicing, termSet );
-    case TokenKind::HASH_APOSTR:    return abbrev( m_rsv.sym_syntax, termSet );
-    case TokenKind::HASH_ACCENT:    return abbrev( m_rsv.sym_quasisyntax, termSet );
-    case TokenKind::HASH_COMMA:     return abbrev( m_rsv.sym_unsyntax, termSet );
-    case TokenKind::HASH_COMMA_AT:  return abbrev( m_rsv.sym_unsyntax_splicing, termSet );
+    case TokenKind::APOSTR:         return abbrev( m_kw.sym_quote, termSet );
+    case TokenKind::ACCENT:         return abbrev( m_kw.sym_quasiquote, termSet );
+    case TokenKind::COMMA:          return abbrev( m_kw.sym_unquote, termSet );
+    case TokenKind::COMMA_AT:       return abbrev( m_kw.sym_unquote_splicing, termSet );
+    case TokenKind::HASH_APOSTR:    return abbrev( m_kw.sym_syntax, termSet );
+    case TokenKind::HASH_ACCENT:    return abbrev( m_kw.sym_quasisyntax, termSet );
+    case TokenKind::HASH_COMMA:     return abbrev( m_kw.sym_unsyntax, termSet );
+    case TokenKind::HASH_COMMA_AT:  return abbrev( m_kw.sym_unsyntax_splicing, termSet );
 
     case TokenKind::DATUM_COMMENT:
       next();

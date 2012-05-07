@@ -16,8 +16,8 @@
 */
 
 
-#ifndef LISTBUILDER_HPP
-#define	LISTBUILDER_HPP
+#ifndef P1_SMALLS_PARSER_LISTBUILDER_HPP
+#define	P1_SMALLS_PARSER_LISTBUILDER_HPP
 
 #include "Syntax.hpp"
 
@@ -56,5 +56,4 @@ public:
 
 }}} // namespaces
 
-#endif	/* LISTBUILDER_HPP */
-
+#endif	/* P1_SMALLS_PARSER_LISTBUILDER_HPP */

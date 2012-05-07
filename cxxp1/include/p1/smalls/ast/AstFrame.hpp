@@ -40,11 +40,13 @@ public:
   const gc_char * const name;
   AstFrame * const frame;
   SourceCoords defCoords;
+  void * data;
 
   AstVariable ( const gc_char * name_, AstFrame * frame_, const SourceCoords & defCoords_ )
     : name(name_), frame(frame_), defCoords(defCoords_)
   {
     ListEntry::debugClear();
+    this->data = NULL;
   }
 };
 
@@ -57,18 +59,22 @@ public:
   int const level;
 
   AstFrame ( AstFrame * parent_ )
-    : parent( parent_ ), level( parent_?parent_->level + 1 : 0)
+    : parent( parent_ ), level( parent_?parent_->level + 1 : -1)
   {
-    m_tmpCount = 0;
+    m_varCount = 0;
   }
 
   AstVariable * newVariable ( const gc_char * name, const SourceCoords & defCoords );
   AstVariable * newAnonymous ( const gc_char * infoPrefix, const SourceCoords & defCoords );
 
-private:
+  unsigned length () const { return m_varCount; };
+
   typedef p1::CircularList<AstVariable> VariableList;
+  VariableList & vars () { return m_vars; }
+
+private:
   VariableList m_vars;
-  unsigned m_tmpCount;
+  unsigned m_varCount;
 };
 
 }} // namespaces

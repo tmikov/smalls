@@ -11,6 +11,7 @@ env.Program( target='scheme-play', source=[
   env['module']['p1::smalls::parser'],
   env['module']['p1::smalls::ast'],
   env['module']['p1::smalls::common'],
+  env['module']['p1::smalls::codegen'],
 ])
 
 

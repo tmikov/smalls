@@ -17,6 +17,7 @@
 #include "p1/util/FastStdioInput.hpp"
 #include "p1/smalls/parser/SyntaxReader.hpp"
 #include "p1/smalls/parser/SchemeParser.hpp"
+#include "p1/smalls/codegen/SimpleCodeGen.hpp"
 #include "ListBuilder.hpp"
 #include <iostream>
 
@@ -64,7 +65,7 @@ int main ( int argc, const char ** argv )
   ErrorReporter errors;
   FastStdioInput fi(fileName,"rb");
   Lexer lex( fi, fileName, symTab, errors );
-  SyntaxReader dp( lex );
+  SyntaxReader dp( lex, Keywords(lex.symbolTable()) );
 
   ListBuilder lb;
   Syntax * d;
@@ -80,8 +81,14 @@ int main ( int argc, const char ** argv )
     std::cout << "\n\n";
   }
 
-  SchemeParser par( symTab, errors );
-  std::cout << *par.compileLibraryBody( body );
+  SchemeParser par( symTab, dp.keywords(), errors );
+  AstModule * mod = par.compileLibraryBody( body );
+  if (true)
+    std::cout << "/*\n" << *mod << "\n*/\n\n";
+
+  SimpleCodeGen cg;
+  cg.setLineInfo( false );
+  cg.generate( std::cout, mod );
 
   return 0;
 }

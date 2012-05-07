@@ -88,7 +88,7 @@ static void validate ( SymbolTable & map, ErrorReporter & err, Syntax * d )
 
   CharBufInput t1( str );
   Lexer lex( t1, "tmpinput", map, err );
-  SyntaxReader parser( lex );
+  SyntaxReader parser( lex, Keywords(lex.symbolTable()) );
 
   Syntax * d1 = parser.parseDatum();
   CPPUNIT_ASSERT( !err.haveErr() && "in validate 2" );
@@ -122,7 +122,7 @@ void TestSyntaxReader::testParser ( )
   "(a . )\n"
   );
   Lexer lex( t1, "input1", map, err );
-  SyntaxReader parser( lex );
+  SyntaxReader parser( lex, Keywords(lex.symbolTable()) );
   Syntax * d;
 
   d = parser.parseDatum();
