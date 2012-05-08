@@ -111,7 +111,7 @@ public:
       return *this;
     }
 
-    T * operator -> () const { iterator_base::m_p; }
+    T * operator -> () const { return iterator_base::m_p; }
     T & operator * () const { return *iterator_base::m_p; }
 
     iterator & operator ++ ()
