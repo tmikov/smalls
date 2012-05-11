@@ -1,0 +1,35 @@
+Dynamic Typing
+==============
+Using the low 3 bits in the word as a type discriminator.
+0 : NULL or pointer to pair
+1 : integer occupying the rest of the word
+2 : pointer to closure
+3 : pointer to double
+4 : pointer to utf-8 string
+5 : pointer to vector
+
+Closure
+==============
+func ptr
+env ptr
+
+Pair
+====
+car
+cdr
+
+Double
+======
+value
+
+utf-8 string
+============
+length
+data[length+1] // zero terminated
+
+vector
+======
+length
+data[length]
+
+

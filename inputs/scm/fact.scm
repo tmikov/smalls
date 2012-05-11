@@ -1,6 +1,7 @@
-;(define <)
-;(define *)
-;(define -)
+(define <)
+(define *)
+(define -)
+(define display)
 
 #;(define fact (lambda (x)
   (let lp ((tot 1) (x x))

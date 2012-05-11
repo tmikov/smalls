@@ -32,41 +32,7 @@ SimpleCodeGen::SimpleCodeGen ()
 
 void SimpleCodeGen::generate ( std::ostream & os, ast::AstModule * module )
 {
-  os << "#include <stdint.h>\n";
-  os << "#include <stdlib.h>\n";
-  os << "#include <gc/gc.h>\n";
-  os << "\n";
-  os << "typedef void * reg_t;\n";
-  os << "typedef struct {\n"
-        "  reg_t (*fp)(void);\n"
-        "  unsigned pcount;\n"
-        "  unsigned plist;\n"
-        "  void * env;\n"
-        "} closure_t;\n";
-  os << "\n";
-  os << "static void * ALLOC ( size_t len ) {\n"
-        "  void * res;\n"
-        "  if ( (res = GC_MALLOC(len)) != 0)\n"
-        "    return res;\n"
-        "  abort();\n"
-        "  return 0;\n"
-        "}\n";
-  os << "\n";
-
-  os << "reg_t";
-  for ( unsigned i = 0; i != PARAM_COUNT; ++i )
-  {
-    if (i != 0)
-      os << ",";
-    if (i && (i % 4 == 0))
-      os << "\n  ";
-    else
-      os << " ";
-    os << "g_param" << i;
-  }
-  os << ";\n";
-  os << "\n";
-  os << "#include \"smalls.inc\"\n";
+  os << "#include \"smalls.h\"\n";
   os << "\n";
 
   genTopLevel( os, module );
@@ -105,30 +71,8 @@ void SimpleCodeGen::genTopLevel ( std::ostream & os, ast::AstModule * module )
 
 SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, ast::AstModule * module )
 {
-  ast::Frame * const sysfr = module->systemFrame();
-
-  assignAddresses( 0, sysfr );
-  os << "static reg_t g_sysframe[];\n";
-  os << "\n";
-  BOOST_FOREACH( ast::Variable & var, *sysfr )
-  {
-    unsigned addr = varData( &var )->addr;
-    os << "static closure_t g_syscl"<<addr<<" = { "
-       << "sysfunc"<<addr<<", sysfunc"<<addr<<"_pcount, sysfunc"<<addr<<"_plist, g_sysframe };\n";
-  }
-  os << "\n";
-  os << "static reg_t g_sysframe[] = {\n";
-  BOOST_FOREACH( ast::Variable & var, *sysfr )
-  {
-    unsigned addr = varData( &var )->addr;
-    os << "  &g_syscl"<<addr<<",\n";
-  }
-  os << "};\n";
-  os << "\n";
-
-  return new Context(NULL,NULL,"g_sysframe",sysfr);
+  return NULL;
 }
-
 
 const gc_char * SimpleCodeGen::genBody ( std::ostream & os, Context * parentCtx, Func * func, ast::AstBody * body )
 {
@@ -196,13 +140,13 @@ const gc_char * SimpleCodeGen::genDatum ( std::ostream & os, Context * ctx, ast:
     switch (v->skind)
     {
     case SyntaxKind::REAL:
-      return formatGCStr("%f", v->u.real); // FIXME
+      return formatGCStr("?%f", v->u.real); // FIXME
 
     case SyntaxKind::INTEGER:
-      return formatGCStr("%lld", v->u.integer); // FIXME
+      return formatGCStr("MK_SMALLINT(%lld)", v->u.integer);
 
     case SyntaxKind::BOOL:
-      return formatGCStr("%d", v->u.vbool);
+      return formatGCStr("MK_SMALLINT(%d)", v->u.vbool);
 
     default:
       // FIXME
@@ -222,22 +166,54 @@ const gc_char * SimpleCodeGen::genClosure ( std::ostream & os, Context * ctx, as
   // Assign addresses to all variables in the frame
   assignAddresses( 1, paramCtx->frame );
 
-  // FIXME: listParam handling
+  // Check the number of parameters
+  unsigned pcount = cl->params ? cl->params->size() : 0;
+
+  if (!cl->listParam)
+  {
+    // Must match exactly
+    ss<<coords(cl)<<"  if (g_pcount != "<<pcount<<
+        ") {error(\"Parameter count mismatch\"); return 0;}\n";
+  }
+  else
+  {
+    // Must have at least that many params
+    if (pcount)
+    {
+      ss<<coords(cl)<<"  if (g_pcount < "<<pcount<<
+          ") {error(\"Parameter count mismatch\"); return 0;}\n";
+    }
+  }
 
   // Allocate the parameter frame
   ss << "  "<<paramCtx->frametmp<<" = (reg_t *)ALLOC( sizeof(reg_t)*" << paramCtx->frame->length()+1 << " );\n";
-  ss << "  "<<paramCtx->frametmp <<"[0] = g_param0;\n";
+  ss << "  "<<paramCtx->frametmp <<"[0] = (reg_t)g_penv;\n";
 
   // Extract all parameters into the frame
-  if (cl->params)
+  if (pcount)
   {
+    unsigned i = 0;
     BOOST_FOREACH( ast::Variable * param, *cl->params )
     {
       unsigned addr = varData(param)->addr;
-      ss << "  " << paramCtx->frametmp << "[" << addr << "] = g_param"<< addr << "; //" << *param << "\n";
+      ss << "  " << paramCtx->frametmp << "[" << addr << "] = g_param["<<i<< "]; //" << *param << "\n";
+      ++i;
     }
   }
   ss << "\n";
+
+  // listParam handling. Must build a list from the actual params
+  if (cl->listParam)
+  {
+    const gc_char * lptmp = cf->nextTmp("pair_t *", "pair_");
+    const gc_char * ctmp = cf->nextTmp("int", "i_");
+    ss<<coords(cl)<<"  "<<lptmp<<" = MK_PAIR(0);\n";
+    ss<<coords(cl)<<"  for ( "<<ctmp<<" = g_pcount; --"<<ctmp<<" >= "<<pcount<<"; )\n";
+    ss<<coords(cl)<<"    "<<lptmp<<" = make_pair( g_param["<<ctmp<<"], (reg_t)"<<lptmp<<" );\n";
+    ss<<coords(cl)<<"  "<<paramCtx->frametmp<<"["<<varData(cl->listParam)->addr<< "] = (reg_t)"<<lptmp<<
+        "; //"<<*cl->listParam<<"\n";
+    ss << "\n";
+  }
 
   const gc_char * rettmp = genBody( ss, paramCtx, cf, cl->body );
   if (rettmp)
@@ -249,8 +225,6 @@ const gc_char * SimpleCodeGen::genClosure ( std::ostream & os, Context * ctx, as
   const gc_char * cltmp = ctx->func->nextTmp( "closure_t *", "closure_" );
   os << "  "<<cltmp<<" = (closure_t*)ALLOC( sizeof(closure_t) );\n";
   os << "  "<<cltmp<<"->fp = "<<cf->name<<";\n";
-  os << "  "<<cltmp<<"->pcount = "<< cl->params->size() <<";\n";
-  os << "  "<<cltmp<<"->plist = "<< (cl->listParam != 0) <<";\n";
   os << "  "<<cltmp<<"->env = "<< ctx->frametmp <<";\n";
 
   return cltmp;
@@ -262,7 +236,8 @@ const gc_char * SimpleCodeGen::genApply ( std::ostream & os, Context * ctx, ast:
   const gc_char * cltmp = ctx->func->nextTmp( "closure_t *", "closure_" );
   const gc_char * result = ctx->func->nextTmp( "reg_t", "result_" );
 
-  os << coords(ap->target) << "  "<<cltmp<<" = (closure_t *)"<<targtmp<<";\n";
+
+  os << coords(ap->target) << "  "<<cltmp<<" = CHK_CLOSURE("<<targtmp<<");\n";
 
   // Store the parameter temporaries here
   std::vector<const gc_char *,gc_allocator<const gc_char*> > paramTmps;
@@ -272,23 +247,33 @@ const gc_char * SimpleCodeGen::genApply ( std::ostream & os, Context * ctx, ast:
       paramTmps.push_back( gen( os, ctx, ast ) );
   }
 
-  os << coords(ap->target) << "  g_param0 = "<<cltmp<<"->env;\n";
+  os << coords(ap->target) << "  g_penv = "<<cltmp<<"->env;\n";
+  unsigned i = 0;
   if (ap->params)
   {
-    unsigned addr = 1;
-    unsigned i = 0;
     BOOST_FOREACH( ast::Ast * ast, *ap->params )
     {
       const gc_char * tmp = paramTmps[i];
       if (!tmp)
         tmp = "0";
-      os<<coords(ast)<<"  g_param"<<addr<<" = (reg_t)"<<tmp<<";\n";
-      ++addr;
+      os<<coords(ast)<<"  g_param["<<i<<"] = "<<tmp<<";\n";
       ++i;
     }
   }
 
-  // FIXME: listParam handling
+  os<<coords(ap)<<"  g_pcount = "<<i<<";\n";
+  if (ap->listParam)
+  {
+    const gc_char * listParam = gen(os, ctx, ap->listParam);
+    const gc_char * ptmp = ctx->func->nextTmp( "pair_t *", "pair_" );
+    os<<coords(ap)<<"  "<<ptmp<<" = CHK_PAIR("<<listParam<<")";
+    os<<coords(ap)<<"  while ("<<ptmp<<") {\n";
+    os<<coords(ap)<<"    if (g_pcount == GPARAM_COUNT) {error(\"Too many parameters\");break;}\n";
+    os<<coords(ap)<<"    g_param[g_pcount++] = "<<ptmp<<"->car;\n";
+    os<<coords(ap)<<"    "<<ptmp<<" = CHK_PAIR("<<ptmp<<"->cdr);\n";
+    os<<coords(ap)<<"  }\n";
+  }
+
   os <<coords(ap)<< "  "<<result<<" = (*"<<cltmp<<"->fp)();\n";
 
   return result;
