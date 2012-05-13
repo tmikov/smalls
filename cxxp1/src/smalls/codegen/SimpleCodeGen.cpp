@@ -110,19 +110,17 @@ SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, AstModule
   assignAddresses( 0, sysfr );
   os << "static reg_t g_sysframe[];\n";
   os << "\n";
-  for ( AstFrame::iterator it = sysfr->begin(), _e = sysfr->end();
-        it != _e; ++it )
+  BOOST_FOREACH( AstVariable & var, *sysfr )
   {
-    unsigned addr = varData( it.operator->() )->addr;
+    unsigned addr = varData( &var )->addr;
     os << "static closure_t g_syscl"<<addr<<" = { "
        << "sysfunc"<<addr<<", sysfunc"<<addr<<"_pcount, sysfunc"<<addr<<"_plist, g_sysframe };\n";
   }
   os << "\n";
   os << "static reg_t g_sysframe[] = {\n";
-  for ( AstFrame::iterator it = sysfr->begin(), _e = sysfr->end();
-        it != _e; ++it )
+  BOOST_FOREACH( AstVariable & var, *sysfr )
   {
-    unsigned addr = varData( it.operator->() )->addr;
+    unsigned addr = varData( &var )->addr;
     os << "  &g_syscl"<<addr<<",\n";
   }
   os << "};\n";
@@ -152,11 +150,8 @@ const gc_char * SimpleCodeGen::genBody ( std::ostream & os, Context * parentCtx,
   }
 
   const char * result = NULL;
-  for ( ListOfAst::iterator i = body->exprList().begin(), _e = body->exprList().end(); i != _e; ++i )
-  {
-    Ast * ast = i.operator->();
-    result = gen( os, ctx, ast );
-  }
+  BOOST_FOREACH( Ast & ast, body->exprList() )
+    result = gen( os, ctx, &ast );
   return result;
 }
 
@@ -339,10 +334,10 @@ std::string SimpleCodeGen::coords ( const SourceCoords & coords )
 void SimpleCodeGen::assignAddresses ( unsigned startAddr, AstFrame * frame )
 {
   // Assign addresses to all variables in the frame
-  for ( AstFrame::iterator i = frame->begin(), e = frame->end(); i != e; ++i )
+  BOOST_FOREACH( AstVariable & var, *frame )
   {
-    assert( i->data == NULL && "Variable already assigned an address" );
-    i->data = new (GC) VarData( startAddr++ );
+    assert( var.data == NULL && "Variable already assigned an address" );
+    var.data = new (GC) VarData( startAddr++ );
   }
 }
 

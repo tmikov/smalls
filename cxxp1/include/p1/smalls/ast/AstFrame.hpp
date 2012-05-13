@@ -66,6 +66,8 @@ public:
   unsigned length () const { return m_varCount; };
 
   typedef VariableList::iterator iterator;
+  typedef VariableList::const_iterator const_iterator;
+
   iterator begin () { return m_vars.begin(); }
   iterator end ()   { return m_vars.end(); }
 
