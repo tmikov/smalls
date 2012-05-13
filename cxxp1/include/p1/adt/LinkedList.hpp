@@ -17,6 +17,8 @@
 #ifndef P1_ADT_LINKEDLIST_HPP
 #define P1_ADT_LINKEDLIST_HPP
 
+#include <iterator>
+
 namespace p1 {
 
 template<class T>
@@ -85,7 +87,7 @@ public:
     return *this;
   }
 
-  class iterator_base
+  class iterator_base : public std::iterator<std::bidirectional_iterator_tag,T>
   {
   public:
     bool operator == ( const iterator_base & it ) const { return m_p == it.m_p; }

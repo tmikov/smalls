@@ -18,6 +18,7 @@
 #define P1_ADT_CIRCULARLIST_HPP
 
 #include <cassert>
+#include <iterator>
 
 namespace p1 {
 
@@ -125,6 +126,11 @@ public:
     insertAfterEntry( after ? Accessor::toListEntry(after) : &m_root, Accessor::toListEntry(toInsert) );
   }
 
+  void remove ( T * item )
+  {
+    removeEntry( Accessor::toListEntry(item) );
+  }
+
   T * first ()
   {
     return m_root.next != &m_root ? Accessor::fromListEntry(m_root.next) : 0;
@@ -185,7 +191,7 @@ public:
     }
   }
 
-  class iterator_base
+  class iterator_base : public std::iterator<std::bidirectional_iterator_tag,T>
   {
   public:
     bool operator == ( const iterator_base & it ) const { return m_p == it.m_p; }
