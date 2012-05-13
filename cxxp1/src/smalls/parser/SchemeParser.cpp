@@ -41,20 +41,6 @@ public:
   virtual Syntax * expand ( Syntax * datum );
 };
 
-#if 0
-class MacroTest : public Macro
-{
-  SymbolTable & m_symbolTable;
-
-public:
-  MacroTest ( Scope * scope_, SymbolTable & symbolTable )
-   : Macro( scope_ ), m_symbolTable( symbolTable )
-  {}
-
-  virtual Syntax * expand ( Syntax * datum );
-};
-#endif
-
 } // anon namespace
 
 SchemeParser::SchemeParser ( SymbolTable & symbolTable, const Keywords & kw, AbstractErrorReporter & errors )
@@ -81,10 +67,6 @@ SchemeParser::SchemeParser ( SymbolTable & symbolTable, const Keywords & kw, Abs
   Binding * orb;
   m_systemScope->bind( orb, m_symbolTable.newSymbol("or"), SourceCoords() );
   orb->bindMacro( new MacroOr( m_systemScope, m_symbolTable ) );
-#if 0
-  m_systemScope->bind( orb, m_symbolTable.newSymbol("test"), BindingKind::MACRO, SourceCoords() );
-  orb->m_u.macro = new MacroTest( m_systemScope, m_symbolTable );
-#endif
 }
 
 SchemeParser::~SchemeParser ()

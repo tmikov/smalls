@@ -50,25 +50,6 @@ SystemBindings::SystemBindings ( SymbolTable & symTab, const Keywords & kw, Scop
   bind_macro_env         ( bindKw( scope, kw.sym_macro_env, ResWord::MACRO_ENV ) )
 {
   assert( &symTab == &kw.symbolTable );
-
-  SourceCoords coords;
-  static const char * const sys_symbols[] =
-  {
-    "+", "-", "*", "/", "<", ">", "==", "!=", "display",
-    0
-  };
-
-  for ( const char * const * ps = sys_symbols; *ps; ++ps )
-  {
-    const char * const s = *ps;
-    Binding * bnd;
-    if (!scope->bind( bnd, symTab.newSymbol(s), coords ))
-    {
-      assert( false );
-      std::abort();
-    }
-    bnd->bindVar( this->frame->newVariable(s, coords) );
-  }
 }
 
 Binding * SystemBindings::bindKw ( Scope * scope, Symbol * sym, ResWord::Enum resCode )
