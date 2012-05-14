@@ -35,6 +35,8 @@ const char * BindingKind::s_names[] =
 
 bool Scope::bind ( Binding * & res, Symbol * sym, const SourceCoords & defCoords )
 {
+  assert( this->symbolTable->topScope() == this );
+
   Binding * bnd;
 
   if ( (bnd = lookupOnlyHere(sym)) != NULL)
@@ -48,6 +50,24 @@ bool Scope::bind ( Binding * & res, Symbol * sym, const SourceCoords & defCoords
   sym->push( bnd );
   res = bnd;
   return true;
+}
+
+void Scope::override ( Binding * & res, Symbol * sym, const SourceCoords & defCoords )
+{
+  assert( this->symbolTable->topScope() == this );
+
+  Binding * bnd;
+
+  if ( (bnd = lookupOnlyHere(sym)) != NULL)
+  {
+    m_bindingList.remove( bnd );
+    bnd->sym->pop( bnd );
+  }
+
+  bnd = new Binding( sym, this, defCoords );
+  addToBindingList( bnd );
+  sym->push( bnd );
+  res = bnd;
 }
 
 std::ostream & operator<< ( std::ostream & os, Binding & bnd )
@@ -90,8 +110,8 @@ Binding * Scope::lookupHereAndUp ( Symbol * sym )
 
 void Scope::popBindings()
 {
-  for ( Binding * bnd = m_bindingList; bnd != NULL; bnd = bnd->m_prevInScope )
-    bnd->sym->pop( bnd );
+  BOOST_FOREACH( Binding & bnd, m_bindingList )
+    bnd.sym->pop( &bnd );
 }
 
 SymbolTable::SymbolTable ()

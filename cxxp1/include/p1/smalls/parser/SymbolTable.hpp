@@ -21,6 +21,7 @@
 
 #include "p1/smalls/common/SourceCoords.hpp"
 #include "p1/util/gc-support.hpp"
+#include "p1/adt/CircularList.hpp"
 #include <boost/unordered_map.hpp>
 #include <boost/noncopyable.hpp>
 #include <list>
@@ -104,42 +105,6 @@ private:
   static const char * s_names[];
 };
 
-class Scope : public gc
-{
-public:
-  SymbolTable * const symbolTable;
-  Scope * const parent;
-  int const level;
-
-  Scope ( SymbolTable * symbolTable_, Scope * parent_ )
-    : symbolTable(symbolTable_), parent( parent_ ), level(parent?parent->level+1:-1)
-  {
-    m_bindingList = NULL;
-    m_active = false;
-  }
-
-  /**
-    *
-    * @param res
-    * @param sym
-    * @return true if a new symbol was defined, false if it was already present in the scope
-    */
-  bool bind ( Binding * & res, Symbol * sym, const SourceCoords & defCoords );
-  Binding * lookupOnlyHere ( Symbol * sym );
-  Binding * lookupHereAndUp ( Symbol * sym );
-
-  void addToBindingList ( Binding * bnd );
-
-  bool isActive () const { return m_active; }
-
-private:
-  Binding * m_bindingList; //< linking Binding::prevInScope
-  bool m_active;
-
-  void popBindings ();
-
-  friend class SymbolTable;
-};
 
 class Macro : public gc
 {
@@ -149,7 +114,7 @@ public:
   virtual Syntax * expand ( Syntax * datum ) = 0;
 };
 
-class Binding : public gc
+class Binding : public gc, public ListEntry
 {
 public:
   Symbol * const sym;
@@ -159,7 +124,6 @@ public:
     : sym(sym_), scope(scope_), m_defCoords(defCoords_)
   {
     this->m_prev = NULL;
-    this->m_prevInScope = NULL;
 #ifndef NDEBUG
     this->m_kind = BindingKind::NONE;
 #endif
@@ -205,7 +169,6 @@ public:
 
 private:
   Binding * m_prev; //< the same symbol in the previous scope
-  Binding * m_prevInScope; //< link to the prev binding in our scope
   SourceCoords m_defCoords; //< coordinates of the source definition
 
   BindingKind::Enum m_kind;
@@ -222,12 +185,49 @@ private:
 
 std::ostream & operator<< ( std::ostream & os, Binding & bnd );
 
-inline void Scope::addToBindingList ( Binding * bnd )
+class Scope : public gc
 {
-  assert( bnd->m_prevInScope == NULL );
-  bnd->m_prevInScope = m_bindingList;
-  m_bindingList = bnd;
-}
+public:
+  SymbolTable * const symbolTable;
+  Scope * const parent;
+  int const level;
+
+  Scope ( SymbolTable * symbolTable_, Scope * parent_ )
+    : symbolTable(symbolTable_), parent( parent_ ), level(parent?parent->level+1:-1)
+  {
+    m_active = false;
+  }
+
+  /**
+    *
+    * @param res
+    * @param sym
+    * @return true if a new symbol was defined, false if it was already present in the scope
+    */
+  bool bind ( Binding * & res, Symbol * sym, const SourceCoords & defCoords );
+  void override ( Binding * & res, Symbol * sym, const SourceCoords & defCoords );
+  Binding * lookupOnlyHere ( Symbol * sym );
+  Binding * lookupHereAndUp ( Symbol * sym );
+
+  void addToBindingList ( Binding * bnd )
+  {
+    assert( !bnd->prev && !bnd->next );
+    m_bindingList.push_back( bnd );
+  }
+
+  bool isActive () const { return m_active; }
+
+private:
+  typedef CircularList<Binding> BindingList;
+
+  BindingList m_bindingList;
+  bool m_active;
+
+  void popBindings ();
+
+  friend class SymbolTable;
+};
+
 
 class Symbol : public gc, public boost::noncopyable
 {
