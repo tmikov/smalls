@@ -30,7 +30,7 @@ SimpleCodeGen::SimpleCodeGen ()
   m_optLineInfo = false;
 }
 
-void SimpleCodeGen::generate ( std::ostream & os, AstModule * module )
+void SimpleCodeGen::generate ( std::ostream & os, ast::AstModule * module )
 {
   os << "#include <stdint.h>\n";
   os << "#include <stdlib.h>\n";
@@ -90,7 +90,7 @@ void SimpleCodeGen::generate ( std::ostream & os, AstModule * module )
         "}\n\n";
 }
 
-void SimpleCodeGen::genTopLevel ( std::ostream & os, AstModule * module )
+void SimpleCodeGen::genTopLevel ( std::ostream & os, ast::AstModule * module )
 {
   Context * sysctx = genSystem( os, module );
 
@@ -103,14 +103,14 @@ void SimpleCodeGen::genTopLevel ( std::ostream & os, AstModule * module )
   f->setContents( ss.str() );
 }
 
-SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, AstModule * module )
+SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, ast::AstModule * module )
 {
-  AstFrame * const sysfr = module->systemFrame();
+  ast::Frame * const sysfr = module->systemFrame();
 
   assignAddresses( 0, sysfr );
   os << "static reg_t g_sysframe[];\n";
   os << "\n";
-  BOOST_FOREACH( AstVariable & var, *sysfr )
+  BOOST_FOREACH( ast::Variable & var, *sysfr )
   {
     unsigned addr = varData( &var )->addr;
     os << "static closure_t g_syscl"<<addr<<" = { "
@@ -118,7 +118,7 @@ SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, AstModule
   }
   os << "\n";
   os << "static reg_t g_sysframe[] = {\n";
-  BOOST_FOREACH( AstVariable & var, *sysfr )
+  BOOST_FOREACH( ast::Variable & var, *sysfr )
   {
     unsigned addr = varData( &var )->addr;
     os << "  &g_syscl"<<addr<<",\n";
@@ -130,7 +130,7 @@ SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, AstModule
 }
 
 
-const gc_char * SimpleCodeGen::genBody ( std::ostream & os, Context * parentCtx, Func * func, AstBody * body )
+const gc_char * SimpleCodeGen::genBody ( std::ostream & os, Context * parentCtx, Func * func, ast::AstBody * body )
 {
   Context * ctx = new Context( parentCtx, func, func->nextTmp("reg_t *", "frame_"), body->frame() );
 
@@ -142,7 +142,7 @@ const gc_char * SimpleCodeGen::genBody ( std::ostream & os, Context * parentCtx,
     os << "  "<<ctx->frametmp<<"[0] = (reg_t)"<<parentCtx->frametmp<<";\n";
   else
     os << "  "<<ctx->frametmp<<"[0] = (reg_t)0;\n";
-  BOOST_FOREACH( AstBody::Definition & defn, body->defs() )
+  BOOST_FOREACH( ast::AstBody::Definition & defn, body->defs() )
   {
     const gc_char * tmp = gen( os, ctx, defn.second );
     if (defn.first && tmp)
@@ -150,22 +150,22 @@ const gc_char * SimpleCodeGen::genBody ( std::ostream & os, Context * parentCtx,
   }
 
   const char * result = NULL;
-  BOOST_FOREACH( Ast & ast, body->exprList() )
+  BOOST_FOREACH( ast::Ast & ast, body->exprList() )
     result = gen( os, ctx, &ast );
   return result;
 }
 
-const gc_char * SimpleCodeGen::gen ( std::ostream & os, Context * ctx, Ast * ast )
+const gc_char * SimpleCodeGen::gen ( std::ostream & os, Context * ctx, ast::Ast * ast )
 {
-  if (AstClosure * cl = dyn_cast<AstClosure>(ast))
+  if (ast::AstClosure * cl = dyn_cast<ast::AstClosure>(ast))
     return genClosure( os, ctx, cl );
-  else if (AstApply * ap = dyn_cast<AstApply>(ast))
+  else if (ast::AstApply * ap = dyn_cast<ast::AstApply>(ast))
     return genApply( os, ctx, ap );
-  else if (AstDatum * dt = dyn_cast<AstDatum>(ast))
+  else if (ast::AstDatum * dt = dyn_cast<ast::AstDatum>(ast))
     return genDatum( os, ctx, dt );
-  else if (isa<AstUnspecified>(ast))
+  else if (isa<ast::AstUnspecified>(ast))
     return "0";
-  else if (AstVar * v = dyn_cast<AstVar>(ast))
+  else if (ast::AstVar * v = dyn_cast<ast::AstVar>(ast))
   {
     // Iteratively access parent frames
     Context * curCtx = ctx;
@@ -183,13 +183,13 @@ const gc_char * SimpleCodeGen::gen ( std::ostream & os, Context * ctx, Ast * ast
     sstmp << *v->var;
     return formatGCStr( "%s[%u]/*%s*/", frametmp, varData(v->var)->addr, sstmp.str().c_str() );
   }
-  else if (AstIf * ia = dyn_cast<AstIf>(ast))
+  else if (ast::AstIf * ia = dyn_cast<ast::AstIf>(ast))
     return genIf( os, ctx, ia );
 
-  return formatGCStr( "?%s", AstKind::name(ast->kind) );
+  return formatGCStr( "?%s", ast::AstKind::name(ast->kind) );
 }
 
-const gc_char * SimpleCodeGen::genDatum ( std::ostream & os, Context * ctx, AstDatum * ast )
+const gc_char * SimpleCodeGen::genDatum ( std::ostream & os, Context * ctx, ast::AstDatum * ast )
 {
   if (SyntaxValue * v = dyn_cast<SyntaxValue>(ast->datum))
   {
@@ -213,7 +213,7 @@ const gc_char * SimpleCodeGen::genDatum ( std::ostream & os, Context * ctx, AstD
     return formatGCStr("??%s", SyntaxKind::name(ast->datum->skind)); // FIXME
 }
 
-const gc_char * SimpleCodeGen::genClosure ( std::ostream & os, Context * ctx, AstClosure * cl )
+const gc_char * SimpleCodeGen::genClosure ( std::ostream & os, Context * ctx, ast::AstClosure * cl )
 {
   std::stringstream ss;
   Func * cf = newFunc( cl->coords );
@@ -231,7 +231,7 @@ const gc_char * SimpleCodeGen::genClosure ( std::ostream & os, Context * ctx, As
   // Extract all parameters into the frame
   if (cl->params)
   {
-    BOOST_FOREACH( AstVariable * param, *cl->params )
+    BOOST_FOREACH( ast::Variable * param, *cl->params )
     {
       unsigned addr = varData(param)->addr;
       ss << "  " << paramCtx->frametmp << "[" << addr << "] = g_param"<< addr << "; //" << *param << "\n";
@@ -256,7 +256,7 @@ const gc_char * SimpleCodeGen::genClosure ( std::ostream & os, Context * ctx, As
   return cltmp;
 }
 
-const gc_char * SimpleCodeGen::genApply ( std::ostream & os, Context * ctx, AstApply * ap )
+const gc_char * SimpleCodeGen::genApply ( std::ostream & os, Context * ctx, ast::AstApply * ap )
 {
   const gc_char * targtmp = gen( os, ctx, ap->target );
   const gc_char * cltmp = ctx->func->nextTmp( "closure_t *", "closure_" );
@@ -268,7 +268,7 @@ const gc_char * SimpleCodeGen::genApply ( std::ostream & os, Context * ctx, AstA
   std::vector<const gc_char *,gc_allocator<const gc_char*> > paramTmps;
   if (ap->params)
   {
-    BOOST_FOREACH( Ast * ast, *ap->params )
+    BOOST_FOREACH( ast::Ast * ast, *ap->params )
       paramTmps.push_back( gen( os, ctx, ast ) );
   }
 
@@ -277,7 +277,7 @@ const gc_char * SimpleCodeGen::genApply ( std::ostream & os, Context * ctx, AstA
   {
     unsigned addr = 1;
     unsigned i = 0;
-    BOOST_FOREACH( Ast * ast, *ap->params )
+    BOOST_FOREACH( ast::Ast * ast, *ap->params )
     {
       const gc_char * tmp = paramTmps[i];
       if (!tmp)
@@ -294,7 +294,7 @@ const gc_char * SimpleCodeGen::genApply ( std::ostream & os, Context * ctx, AstA
   return result;
 }
 
-const gc_char * SimpleCodeGen::genIf ( std::ostream & os, Context * ctx, AstIf * ia )
+const gc_char * SimpleCodeGen::genIf ( std::ostream & os, Context * ctx, ast::AstIf * ia )
 {
   const gc_char * cndtmp = gen( os, ctx, ia->cond );
   const gc_char * exitlab = ctx->func->nextTmp(0,"lab_");
@@ -331,10 +331,10 @@ std::string SimpleCodeGen::coords ( const SourceCoords & coords )
     return "";
 }
 
-void SimpleCodeGen::assignAddresses ( unsigned startAddr, AstFrame * frame )
+void SimpleCodeGen::assignAddresses ( unsigned startAddr, ast::Frame * frame )
 {
   // Assign addresses to all variables in the frame
-  BOOST_FOREACH( AstVariable & var, *frame )
+  BOOST_FOREACH( ast::Variable & var, *frame )
   {
     assert( var.data == NULL && "Variable already assigned an address" );
     var.data = new (GC) VarData( startAddr++ );

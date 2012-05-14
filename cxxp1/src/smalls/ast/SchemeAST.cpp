@@ -23,6 +23,7 @@
 
 namespace p1 {
 namespace smalls {
+namespace ast {
 
 #define _MK_ENUM(x) #x,
 const char * AstKind::s_names[] =
@@ -165,7 +166,7 @@ void AstClosure::toStream ( std::ostream & os ) const
 
   os << '(';
   unsigned c = 0;
-  BOOST_FOREACH( AstVariable * var, *this->params )
+  BOOST_FOREACH( ast::Variable * var, *this->params )
   {
     if (c++ > 0)
       os << ' ';
@@ -202,7 +203,7 @@ void AstLet::toStream ( std::ostream & os ) const
 
 AstFix::AstFix (
   const SourceCoords & coords_,
-  AstFrame * paramFrame,
+  ast::Frame * paramFrame,
   VectorOfVariable * params,
   AstBody * body_,
   VectorOfAst * values
@@ -228,5 +229,5 @@ std::ostream & operator<< ( std::ostream & os, AstModule & mod )
   return os << *mod.body();
 }
 
-}} // namespaces
+}}} // namespaces
 

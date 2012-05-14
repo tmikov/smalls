@@ -25,19 +25,20 @@
 
 namespace p1 {
 namespace smalls {
+namespace ast {
 
-class AstVariable;
-class AstFrame;
+class Variable;
+class Frame;
 
-class AstVariable : public p1::ListEntry, public gc
+class Variable : public p1::ListEntry, public gc
 {
 public:
   const gc_char * const name;
-  AstFrame * const frame;
+  Frame * const frame;
   SourceCoords defCoords;
   void * data;
 
-  AstVariable ( const gc_char * name_, AstFrame * frame_, const SourceCoords & defCoords_ )
+  Variable ( const gc_char * name_, Frame * frame_, const SourceCoords & defCoords_ )
     : name(name_), frame(frame_), defCoords(defCoords_)
   {
     ListEntry::debugClear();
@@ -45,23 +46,23 @@ public:
   }
 };
 
-std::ostream & operator << ( std::ostream & os, const AstVariable & var );
+std::ostream & operator << ( std::ostream & os, const Variable & var );
 
-class AstFrame : public gc
+class Frame : public gc
 {
-  typedef p1::CircularList<AstVariable> VariableList;
+  typedef p1::CircularList<Variable> VariableList;
 public:
-  AstFrame * const parent;
+  Frame * const parent;
   int const level;
 
-  AstFrame ( AstFrame * parent_ )
+  Frame ( Frame * parent_ )
     : parent( parent_ ), level( parent_?parent_->level + 1 : -1)
   {
     m_varCount = 0;
   }
 
-  AstVariable * newVariable ( const gc_char * name, const SourceCoords & defCoords );
-  AstVariable * newAnonymous ( const gc_char * infoPrefix, const SourceCoords & defCoords );
+  Variable * newVariable ( const gc_char * name, const SourceCoords & defCoords );
+  Variable * newAnonymous ( const gc_char * infoPrefix, const SourceCoords & defCoords );
 
   unsigned length () const { return m_varCount; };
 
@@ -76,7 +77,7 @@ private:
   unsigned m_varCount;
 };
 
-}} // namespaces
+}}} // namespaces
 
 #endif	/* P1_SMALLS_AST_ASTFRAME_HPP */
 

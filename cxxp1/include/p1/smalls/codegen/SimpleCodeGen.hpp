@@ -34,7 +34,7 @@ public:
 
   void setLineInfo ( bool on ) { m_optLineInfo = on; }
 
-  void generate ( std::ostream & os, AstModule * module );
+  void generate ( std::ostream & os, ast::AstModule * module );
 
 private:
   unsigned m_tmpIndex;
@@ -81,9 +81,9 @@ private:
     Context * const parent;
     Func * const func;
     const gc_char * const frametmp;
-    AstFrame * const frame;
+    ast::Frame * const frame;
 
-    Context ( Context * parent_, Func * func_, const gc_char * frametmp_, AstFrame * frame_)
+    Context ( Context * parent_, Func * func_, const gc_char * frametmp_, ast::Frame * frame_)
       : parent(parent_), func(func_), frametmp(frametmp_), frame(frame_)
     {}
   };
@@ -102,15 +102,15 @@ private:
     return &m_funcs.back();
   }
 
-  void genTopLevel ( std::ostream & os, AstModule * module );
-  Context * genSystem ( std::ostream & os, AstModule * module );
+  void genTopLevel ( std::ostream & os, ast::AstModule * module );
+  Context * genSystem ( std::ostream & os, ast::AstModule * module );
 
-  const gc_char * genBody ( std::ostream & os, Context * parentCtx, Func * func, AstBody * body );
-  const gc_char * gen ( std::ostream & os, Context * ctx, Ast * ast );
-  const gc_char * genDatum ( std::ostream & os, Context * ctx, AstDatum * ast );
-  const gc_char * genClosure ( std::ostream & os, Context * ctx, AstClosure * cl );
-  const gc_char * genApply ( std::ostream & os, Context * ctx, AstApply * ap );
-  const gc_char * genIf ( std::ostream & os, Context * ctx, AstIf * ia );
+  const gc_char * genBody ( std::ostream & os, Context * parentCtx, Func * func, ast::AstBody * body );
+  const gc_char * gen ( std::ostream & os, Context * ctx, ast::Ast * ast );
+  const gc_char * genDatum ( std::ostream & os, Context * ctx, ast::AstDatum * ast );
+  const gc_char * genClosure ( std::ostream & os, Context * ctx, ast::AstClosure * cl );
+  const gc_char * genApply ( std::ostream & os, Context * ctx, ast::AstApply * ap );
+  const gc_char * genIf ( std::ostream & os, Context * ctx, ast::AstIf * ia );
 
   struct VarData : public gc
   {
@@ -118,18 +118,18 @@ private:
     VarData ( unsigned addr_ ) : addr(addr_) {};
   };
 
-  static VarData * varData ( AstVariable * var )
+  static VarData * varData ( ast::Variable * var )
   {
     return static_cast<VarData*>(var->data);
   }
 
   std::string coords ( const SourceCoords & coords );
-  std::string coords ( Ast * ast )
+  std::string coords ( ast::Ast * ast )
   {
     return coords( ast->coords );
   }
 
-  void assignAddresses ( unsigned startAddr, AstFrame * frame );
+  void assignAddresses ( unsigned startAddr, ast::Frame * frame );
 };
 
 }}

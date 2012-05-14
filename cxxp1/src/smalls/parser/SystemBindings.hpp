@@ -23,9 +23,13 @@
 namespace p1 {
 namespace smalls {
   class Keywords;
-
-  class AstFrame;
 }}
+
+namespace p1 {
+namespace smalls {
+namespace ast {
+  class Frame;
+}}}
 
 namespace p1 {
 namespace smalls {
@@ -35,7 +39,7 @@ class SystemBindings : public gc
 {
 public:
   Scope * const scope;
-  AstFrame * const frame;
+  ast::Frame * const frame;
 
   Binding * const bind_quote;
   Binding * const bind_quasiquote;

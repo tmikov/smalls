@@ -73,21 +73,21 @@ SchemeParser::~SchemeParser ()
 {
 }
 
-AstModule * SchemeParser::compileLibraryBody ( Syntax * datum )
+ast::AstModule * SchemeParser::compileLibraryBody ( Syntax * datum )
 {
-  Context * ctx = new Context( m_symbolTable.newScope(), new AstFrame(m_systemFrame) );
-  return new AstModule( m_systemFrame, compileBody( ctx, datum ) );
+  Context * ctx = new Context( m_symbolTable.newScope(), new ast::Frame(m_systemFrame) );
+  return new ast::AstModule( m_systemFrame, compileBody( ctx, datum ) );
 }
 
-AstBody * SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax * datum )
+ast::AstBody * SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax * datum )
 {
   parseBody( ctx, datum );
 
-  AstBody * body = new AstBody( datum->coords, ctx->frame );
+  ast::AstBody * body = new ast::AstBody( datum->coords, ctx->frame );
 
   BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
   {
-    body->defs().push_back( AstBody::Definition(
+    body->defs().push_back( ast::AstBody::Definition(
       defn.first ? defn.first->var() : NULL,
       compileExpression( ctx, defn.second )
     ));
@@ -100,7 +100,7 @@ AstBody * SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax * datu
 }
 
 #if 0
-Ast * SchemeParser::convertLetRecStar ( AstBody * bodyAst )
+ast::Ast * SchemeParser::convertLetRecStar ( ast::AstBody * bodyAst )
 {
   if (bodyAst->defs().empty())
     return bodyAst->exprList();
@@ -125,13 +125,13 @@ Trivial conversion to let.
   VectorOfAst * values = new (GC) VectorOfAst();
 
   ListOfAst body;
-  BOOST_FOREACH( AstBody::Definition & defn, bodyAst->defs() )
+  BOOST_FOREACH( ast::AstBody::Definition & defn, bodyAst->defs() )
   {
     if (defn.first)
     {
       vars->push_back( defn.first );
       values->push_back( makeUnspecified(defn.first->defCoords) );
-      body += new AstSet( defn.first->defCoords, defn.first, defn.second );
+      body += new ast::AstSet( defn.first->defCoords, defn.first, defn.second );
     }
     else
       body.destructiveAppend( defn.second );
@@ -141,9 +141,9 @@ Trivial conversion to let.
 
   // Create a dummy body frame
   // FIXME: WTF??
-  AstFrame * letBodyFrame = new AstFrame(bodyAst->frame());
+  ast::Frame * letBodyFrame = new ast::Frame(bodyAst->frame());
 
-  return makeListOfAst(new AstLet(
+  return makeListOfAst(new ast::AstLet(
     bodyAst->coords,
     bodyAst->frame(),
     vars,
@@ -361,12 +361,12 @@ Syntax * MacroOr::expand ( Syntax * datum )
   return let.toList();
 }
 
-Ast * SchemeParser::compileExpression ( SchemeParser::Context * ctx, Syntax * expr )
+ast::Ast * SchemeParser::compileExpression ( SchemeParser::Context * ctx, Syntax * expr )
 {
 tail_recursion:
   if (SyntaxValue * sv = dyn_cast<SyntaxValue>(expr))
   {
-    return new AstDatum( expr->coords, sv );
+    return new ast::AstDatum( expr->coords, sv );
   }
   else if (SyntaxVector * svec = dyn_cast<SyntaxVector>(expr))
   {
@@ -412,12 +412,12 @@ unspec:
   return makeUnspecified(expr);
 }
 
-Ast * SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords )
+ast::Ast * SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords )
 {
   if (bnd != m_unspec)
   {
     if (bnd->kind() == BindingKind::VAR)
-      return new AstVar(exprForCoords->coords, bnd->var());
+      return new ast::AstVar(exprForCoords->coords, bnd->var());
     else
       error( exprForCoords, "Undefined variable '%s'", bnd->sym->name );
   }
@@ -425,10 +425,10 @@ Ast * SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax * expr
 }
 
 
-Ast * SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * pair )
+ast::Ast * SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * pair )
 {
-  Ast * target = compileExpression( ctx, pair->car() );
-  VectorOfAst * params = new VectorOfAst();
+  ast::Ast * target = compileExpression( ctx, pair->car() );
+  ast::VectorOfAst * params = new ast::VectorOfAst();
   Syntax * n = pair->cdr();
   while (!isa<SyntaxNil>(n))
   {
@@ -439,14 +439,14 @@ Ast * SchemeParser::compileCall ( SchemeParser::Context * ctx, SyntaxPair * pair
     n = expr->cdr();
   }
 
-  return new AstApply( pair->coords, target, params, NULL );
+  return new ast::AstApply( pair->coords, target, params, NULL );
 }
 
 
 /**
  * Compile a (reserved-word ...) form
  */
-Ast * SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair * pair, Binding * bndCar )
+ast::Ast * SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair * pair, Binding * bndCar )
 {
   switch (bndCar->resWord())
   {
@@ -467,9 +467,9 @@ Ast * SchemeParser::compileResForm ( SchemeParser::Context * ctx, SyntaxPair * p
   }
 }
 
-Ast * SchemeParser::compileBegin ( SchemeParser::Context * ctx, SyntaxPair * beginPair )
+ast::Ast * SchemeParser::compileBegin ( SchemeParser::Context * ctx, SyntaxPair * beginPair )
 {
-  AstBegin * begin = new AstBegin( beginPair->car()->coords );
+  ast::AstBegin * begin = new ast::AstBegin( beginPair->car()->coords );
   Syntax * n = beginPair->cdr();
 
   while (!isa<SyntaxNil>(n))
@@ -485,7 +485,7 @@ Ast * SchemeParser::compileBegin ( SchemeParser::Context * ctx, SyntaxPair * beg
   return begin;
 }
 
-Ast * SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair * setPair )
+ast::Ast * SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair * setPair )
 {
   Syntax * ps[2];
 
@@ -520,12 +520,12 @@ Ast * SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPair * s
 
   // Value
   //
-  Ast * value = compileExpression( ctx, ps[1] );
+  ast::Ast * value = compileExpression( ctx, ps[1] );
 
-  return new AstSet( setPair->car()->coords, bnd->var(), value );
+  return new ast::AstSet( setPair->car()->coords, bnd->var(), value );
 }
 
-Ast * SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * ifPair )
+ast::Ast * SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * ifPair )
 {
   Syntax * ps[2];
   SyntaxPair * restp;
@@ -533,9 +533,9 @@ Ast * SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * ifPair
   if (!needParams( "if", ifPair->cdr(), 2, ps, &restp ))
     return makeUnspecified(ifPair);
 
-  Ast * cond = compileExpression( ctx, ps[0] );
-  Ast * thenAst = compileExpression( ctx, ps[1] );
-  Ast * elseAst = NULL;
+  ast::Ast * cond = compileExpression( ctx, ps[0] );
+  ast::Ast * thenAst = compileExpression( ctx, ps[1] );
+  ast::Ast * elseAst = NULL;
 
   if (!isa<SyntaxNil>(restp))
   {
@@ -545,10 +545,10 @@ Ast * SchemeParser::compileIf ( SchemeParser::Context * ctx, SyntaxPair * ifPair
       error( restp->cdr(), "if: form list is too long" );
   }
 
-  return new AstIf( ifPair->car()->coords, cond, thenAst, elseAst );
+  return new ast::AstIf( ifPair->car()->coords, cond, thenAst, elseAst );
 }
 
-Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair * lambdaPair )
+ast::Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair * lambdaPair )
 {
   Syntax * p0;
   SyntaxPair * restp;
@@ -556,12 +556,12 @@ Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair * la
   if (!needParams( "lambda", lambdaPair->cdr(), 1, &p0, &restp ))
     return makeUnspecified(lambdaPair);
 
-  VectorOfVariable * vars = new (GC) VectorOfVariable();
-  AstVariable * listParam = NULL;
+  ast::VectorOfVariable * vars = new (GC) ast::VectorOfVariable();
+  ast::Variable * listParam = NULL;
 
   Scope * paramScope = m_symbolTable.newScope();
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, paramScope );
-  AstFrame * paramFrame = new AstFrame( ctx->frame );
+  ast::Frame * paramFrame = new ast::Frame( ctx->frame );
 
   if (SyntaxSymbol * ss = dyn_cast<SyntaxSymbol>(p0)) // one formal parameter will accept a list of actual parameters
   {
@@ -626,19 +626,19 @@ Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair * la
   }
 
 
-  Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
+  Context * bodyCtx = new Context( m_symbolTable.newScope(), new ast::Frame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
-  AstBody * body;
+  ast::AstBody * body;
   if (!isa<SyntaxNil>(restp))
     body = compileBody( bodyCtx, restp );
   else
   {
     error( restp, "lambda requires a body" );
-    body = new AstBody( restp->coords, bodyCtx->frame );
+    body = new ast::AstBody( restp->coords, bodyCtx->frame );
   }
 
-  return new AstClosure(
+  return new ast::AstClosure(
     lambdaPair->car()->coords,
     paramFrame,
     vars,
@@ -647,7 +647,7 @@ Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair * la
   );
 }
 
-Ast * SchemeParser::compileLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
+ast::Ast * SchemeParser::compileLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
 {
   if (SyntaxPair * p = dyn_cast<SyntaxPair>(letPair->cdr()))
     if (p->car()->skind == SyntaxKind::PAIR || isa<SyntaxNil>(p->car()))
@@ -659,7 +659,7 @@ Ast * SchemeParser::compileLet ( SchemeParser::Context * ctx, SyntaxPair * letPa
   return makeUnspecified(letPair);
 }
 
-Ast * SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
+ast::Ast * SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
 {
   Syntax * p0;
   SyntaxPair * restp;
@@ -703,18 +703,18 @@ Ast * SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPair * 
   }
 
   // Compile the initialization expressions
-  VectorOfAst * values = new (GC) VectorOfAst();
+  ast::VectorOfAst * values = new (GC) ast::VectorOfAst();
 
   BOOST_FOREACH( Syntax * expr, valueDatums )
     values->push_back( compileExpression( ctx, expr ) );
 
   // Parse the newly created variables
   //
-  VectorOfVariable * vars = new (GC) VectorOfVariable();
+  ast::VectorOfVariable * vars = new (GC) ast::VectorOfVariable();
 
   Scope * paramScope = m_symbolTable.newScope();
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, paramScope );
-  AstFrame * paramFrame = new AstFrame( ctx->frame );
+  ast::Frame * paramFrame = new ast::Frame( ctx->frame );
 
   BOOST_FOREACH( Syntax * curParam, varDatums )
   {
@@ -738,19 +738,19 @@ Ast * SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPair * 
 
   // Parse the body
   //
-  Context * bodyCtx = new Context( m_symbolTable.newScope(), new AstFrame(paramFrame) );
+  Context * bodyCtx = new Context( m_symbolTable.newScope(), new ast::Frame(paramFrame) );
   ON_BLOCK_EXIT_OBJ( m_symbolTable, &SymbolTable::popThisScope, bodyCtx->scope );
 
-  AstBody * body;
+  ast::AstBody * body;
   if (!isa<SyntaxNil>(restp))
     body = compileBody( bodyCtx, restp );
   else
   {
     error( restp, "let requires a body" );
-    body = new AstBody( restp->coords, bodyCtx->frame );
+    body = new ast::AstBody( restp->coords, bodyCtx->frame );
   }
 
-  return new AstLet(
+  return new ast::AstLet(
     letPair->car()->coords,
     paramFrame,
     vars,
@@ -760,7 +760,7 @@ Ast * SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPair * 
 }
 
 // FIXME
-Ast * SchemeParser::compileNamedLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
+ast::Ast * SchemeParser::compileNamedLet ( SchemeParser::Context * ctx, SyntaxPair * letPair )
 {
   Syntax * ps[2];
   SyntaxPair * restp;
@@ -814,9 +814,9 @@ bool SchemeParser::splitLetParams ( Syntax * p0, DatumList & varDatums, DatumLis
   return true;
 }
 
-Ast * SchemeParser::makeUnspecified ( const SourceCoords & coords )
+ast::Ast * SchemeParser::makeUnspecified ( const SourceCoords & coords )
 {
-  return new AstUnspecified(coords);
+  return new ast::AstUnspecified(coords);
 }
 
 bool SchemeParser::needParams ( const char * formName, Syntax * datum, unsigned np, Syntax ** params, SyntaxPair ** restp )

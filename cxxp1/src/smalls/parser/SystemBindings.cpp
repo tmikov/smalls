@@ -16,7 +16,7 @@
 */
 #include "SystemBindings.hpp"
 #include "Keywords.hpp"
-#include "p1/smalls/ast/AstFrame.hpp"
+#include "p1/smalls/ast/Frame.hpp"
 
 namespace p1 {
 namespace smalls {
@@ -24,7 +24,7 @@ namespace detail {
 
 SystemBindings::SystemBindings ( SymbolTable & symTab, const Keywords & kw, Scope * sc ) :
   scope( sc ),
-  frame( new AstFrame(NULL) ),
+  frame( new ast::Frame(NULL) ),
   bind_quote             ( bindKw( scope, kw.sym_quote, ResWord::QUOTE ) ),
   bind_quasiquote        ( bindKw( scope, kw.sym_quasiquote, ResWord::NONE /*SymCode::QUASIQUOTE*/ ) ),
   bind_unquote           ( bindKw( scope, kw.sym_unquote, ResWord::NONE /*SymCode::UNQUOTE*/ ) ),

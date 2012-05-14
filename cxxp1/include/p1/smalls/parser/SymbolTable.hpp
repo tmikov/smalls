@@ -30,8 +30,13 @@
 namespace p1 {
 namespace smalls {
   class Syntax;
-  class AstVariable;
 }}
+
+namespace p1 {
+namespace smalls {
+namespace ast {
+  class Variable;
+}}}
 
 namespace p1 {
 namespace smalls {
@@ -137,7 +142,7 @@ public:
     assert( m_kind == BindingKind::RESWORD );
     return m_u.resWord;
   }
-  AstVariable * var () const
+  ast::Variable * var () const
   {
     assert( m_kind == BindingKind::VAR );
     return m_u.var;
@@ -154,7 +159,7 @@ public:
     m_kind = BindingKind::RESWORD;
     m_u.resWord = resWord;
   }
-  void bindVar ( AstVariable * var )
+  void bindVar ( ast::Variable * var )
   {
     assert( m_kind == BindingKind::NONE && "Binding already initialized" );
     m_kind = BindingKind::VAR;
@@ -175,7 +180,7 @@ private:
   union
   {
     ResWord::Enum resWord;
-    AstVariable * var;
+    ast::Variable * var;
     Macro * macro;
   } m_u;
 

@@ -19,7 +19,7 @@
 #ifndef P1_SMALLS_AST_SCHEMEAST_HPP
 #define	P1_SMALLS_AST_SCHEMEAST_HPP
 
-#include "AstFrame.hpp"
+#include "Frame.hpp"
 #include "p1/smalls/common/SourceCoords.hpp"
 #include "p1/adt/LinkedList.hpp"
 #include "p1/util/casting.hpp"
@@ -33,6 +33,7 @@ namespace smalls {
 
 namespace p1 {
 namespace smalls {
+namespace ast {
 
 #define _DEF_AST_CODES \
   _MK_ENUM(NONE) \
@@ -117,9 +118,9 @@ public:
 class AstVar : public Ast
 {
 public:
-  AstVariable * const var;
+  ast::Variable * const var;
 
-  AstVar ( const SourceCoords & coords_, AstVariable * var_ )
+  AstVar ( const SourceCoords & coords_, ast::Variable * var_ )
     : Ast( AstKind::VAR, coords_ ), var( var_ )
   {}
 
@@ -147,10 +148,10 @@ public:
 class AstSet : public Ast
 {
 public:
-  AstVariable * const target;
+  ast::Variable * const target;
   Ast * const rvalue;
 
-  AstSet ( const SourceCoords & coords_, AstVariable * target_, Ast * rvalue_ )
+  AstSet ( const SourceCoords & coords_, ast::Variable * target_, Ast * rvalue_ )
     : Ast( AstKind::SET, coords_ ), target(target_), rvalue(rvalue_)
   {}
 
@@ -222,10 +223,10 @@ protected:
 class AstBody : public AstBegin
 {
 public:
-  typedef std::pair<AstVariable *, Ast *> Definition;
+  typedef std::pair<ast::Variable *, Ast *> Definition;
   typedef std::list<Definition,gc_allocator<Definition> > DefinitionList;
 
-  AstBody ( const SourceCoords & coords_, AstFrame * frame )
+  AstBody ( const SourceCoords & coords_, ast::Frame * frame )
     : AstBegin( AstKind::BODY, coords_ ), m_frame(frame)
   {}
 
@@ -234,31 +235,31 @@ public:
 
   DefinitionList & defs () { return m_defs; }
 
-  AstFrame * frame () { return m_frame; }
-  void setFrame ( AstFrame * frame ) { m_frame = frame; }
+  ast::Frame * frame () { return m_frame; }
+  void setFrame ( ast::Frame * frame ) { m_frame = frame; }
 
   virtual void toStream ( std::ostream & os ) const;
 
 private:
   DefinitionList m_defs;
-  AstFrame * m_frame;
+  ast::Frame * m_frame;
 };
 
-typedef std::vector<AstVariable *, gc_allocator<AstVariable *> > VectorOfVariable;
+typedef std::vector<ast::Variable *, gc_allocator<ast::Variable *> > VectorOfVariable;
 
 class AstClosure : public Ast
 {
 public:
-  AstFrame * const paramFrame;
+  ast::Frame * const paramFrame;
   VectorOfVariable * const params;
-  AstVariable * const listParam;
+  ast::Variable * const listParam;
   AstBody * const body;
 
   AstClosure (
     const SourceCoords & coords_,
-    AstFrame * paramFrame_,
+    ast::Frame * paramFrame_,
     VectorOfVariable * params_,
-    AstVariable * listParam_,
+    ast::Variable * listParam_,
     AstBody * body_
   ) : Ast( AstKind::CLOSURE, coords_ ),
       paramFrame( paramFrame_ ),
@@ -276,14 +277,14 @@ public:
 class AstLet : public Ast
 {
 public:
-  AstFrame * paramFrame;
+  ast::Frame * paramFrame;
   VectorOfVariable * params;
   AstBody * const body;
   VectorOfAst * values;
 
   AstLet (
     const SourceCoords & coords_,
-    AstFrame * paramFrame_,
+    ast::Frame * paramFrame_,
     VectorOfVariable * params_,
     AstBody * body_,
     VectorOfAst * values_
@@ -303,7 +304,7 @@ protected:
   AstLet (
     AstKind::Enum code,
     const SourceCoords & coords_,
-    AstFrame * paramFrame_,
+    ast::Frame * paramFrame_,
     VectorOfVariable * params_,
     AstBody * body_,
     VectorOfAst * values_
@@ -325,7 +326,7 @@ class AstFix : public AstLet
 public:
   AstFix (
     const SourceCoords & coords_,
-    AstFrame * paramFrame_,
+    ast::Frame * paramFrame_,
     VectorOfVariable * params_,
     AstBody * body_,
     VectorOfAst * values_
@@ -338,24 +339,24 @@ public:
 class AstModule : public gc
 {
 public:
-  AstModule ( AstFrame * systemFrame, AstBody * body )
+  AstModule ( ast::Frame * systemFrame, AstBody * body )
     : m_systemFrame( systemFrame ), m_body( body )
   {}
   AstModule () {}
 
-  AstFrame * systemFrame () { return m_systemFrame; }
+  ast::Frame * systemFrame () { return m_systemFrame; }
 
   AstBody * body () { return m_body; }
   void setBody ( AstBody * body ) { m_body = body; }
 
 private:
-  AstFrame * m_systemFrame;
+  ast::Frame * m_systemFrame;
   AstBody *  m_body;
 };
 
 std::ostream & operator<< ( std::ostream & os, AstModule & mod );
 
-}} // namespaces
+}}} // namespaces
 
 #endif	/* P1_SMALLS_AST_SCHEMEAST_HPP */
 

@@ -38,7 +38,7 @@ public:
   SchemeParser( SymbolTable & symbolTable, const Keywords & kw, AbstractErrorReporter & errors );
   ~SchemeParser();
 
-  AstModule * compileLibraryBody ( Syntax * datum );
+  ast::AstModule * compileLibraryBody ( Syntax * datum );
 
 private:
   typedef std::list<Syntax *,gc_allocator<SyntaxPair *> > DatumList;
@@ -49,11 +49,11 @@ private:
   struct Context : public gc
   {
     Scope * scope;
-    AstFrame * frame;
+    ast::Frame * frame;
     DeferredDefineList defnList; //< the deferred definitions
     DatumList exprList; //< the body expressions
 
-    Context ( Scope * scope_, AstFrame * frame_ ) : scope(scope_), frame(frame_) {};
+    Context ( Scope * scope_, ast::Frame * frame_ ) : scope(scope_), frame(frame_) {};
 
     bool topLevel () const { return this->scope->level == 0; };
   };
@@ -63,32 +63,32 @@ private:
   AbstractErrorReporter & m_errors;
 
   Mark * const m_antiMark;
-  AstFrame * m_systemFrame; // the frame containing the system symbols
+  ast::Frame * m_systemFrame; // the frame containing the system symbols
   Binding * m_bindBegin; // the "begin" system binding. We need it occasionally
   Binding * m_unspec;
 
-  AstBody * compileBody ( Context * ctx, Syntax * datum );
+  ast::AstBody * compileBody ( Context * ctx, Syntax * datum );
   void parseBody ( Context * ctx, Syntax * datum);
   void processBodyForm ( Context * ctx, Syntax * datum );
   void recordDefine ( Context * ctx, SyntaxPair * form );
 
   Syntax * expandMacro ( Context * ctx, Macro * macro, SyntaxPair * pair );
 
-  Ast * compileExpression ( Context * ctx, Syntax * expr );
-  Ast * compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords );
-  Ast * compileCall ( Context * ctx, SyntaxPair * call );
-  Ast * compileResForm ( Context * ctx, SyntaxPair * pair, Binding * bndCar );
-  Ast * compileBegin ( Context * ctx, SyntaxPair * beginPair );
-  Ast * compileSetBang ( Context * ctx, SyntaxPair * setPair );
-  Ast * compileIf ( Context * ctx, SyntaxPair * ifPair );
-  Ast * compileLambda ( Context * ctx, SyntaxPair * lambdaPair );
-  Ast * compileLet ( Context * ctx, SyntaxPair * letPair );
-  Ast * compileBasicLet ( Context * ctx, SyntaxPair * letPair );
-  Ast * compileNamedLet ( Context * ctx, SyntaxPair * letPair );
+  ast::Ast * compileExpression ( Context * ctx, Syntax * expr );
+  ast::Ast * compileBinding ( Context * ctx, Binding * bnd, Syntax * exprForCoords );
+  ast::Ast * compileCall ( Context * ctx, SyntaxPair * call );
+  ast::Ast * compileResForm ( Context * ctx, SyntaxPair * pair, Binding * bndCar );
+  ast::Ast * compileBegin ( Context * ctx, SyntaxPair * beginPair );
+  ast::Ast * compileSetBang ( Context * ctx, SyntaxPair * setPair );
+  ast::Ast * compileIf ( Context * ctx, SyntaxPair * ifPair );
+  ast::Ast * compileLambda ( Context * ctx, SyntaxPair * lambdaPair );
+  ast::Ast * compileLet ( Context * ctx, SyntaxPair * letPair );
+  ast::Ast * compileBasicLet ( Context * ctx, SyntaxPair * letPair );
+  ast::Ast * compileNamedLet ( Context * ctx, SyntaxPair * letPair );
   bool splitLetParams ( Syntax * p0, DatumList & varDatums, DatumList & valueDatums );
 
-  static Ast * makeUnspecified ( const SourceCoords & coords );
-  static Ast * makeUnspecified ( Syntax * where )
+  static ast::Ast * makeUnspecified ( const SourceCoords & coords );
+  static ast::Ast * makeUnspecified ( Syntax * where )
   {
     return makeUnspecified( where->coords );
   }

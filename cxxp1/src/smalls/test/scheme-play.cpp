@@ -82,7 +82,7 @@ int main ( int argc, const char ** argv )
   }
 
   SchemeParser par( symTab, dp.keywords(), errors );
-  AstModule * mod = par.compileLibraryBody( body );
+  ast::AstModule * mod = par.compileLibraryBody( body );
   if (true)
     std::cout << "/*\n" << *mod << "\n*/\n\n";
 
