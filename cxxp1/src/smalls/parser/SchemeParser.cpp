@@ -47,7 +47,18 @@ SchemeParser::SchemeParser ( SymbolTable & symbolTable, const Keywords & kw, Abs
   : m_symbolTable( symbolTable ),
     m_systemScope( m_symbolTable.newScope() ),
     m_errors( errors ),
-    m_antiMark( new Mark( -1, NULL, NULL ) )
+    m_antiMark( new Mark( -1, NULL, NULL ) ),
+
+    sym_library( m_symbolTable.newSymbol("library") ),
+    sym_export ( m_symbolTable.newSymbol("export") ),
+    sym_import ( m_symbolTable.newSymbol("import") ),
+    sym_rename ( m_symbolTable.newSymbol("rename") ),
+    sym_for    ( m_symbolTable.newSymbol("for") ),
+    sym_expand ( m_symbolTable.newSymbol("expand") ),
+    sym_meta   ( m_symbolTable.newSymbol("meta") ),
+    sym_only   ( m_symbolTable.newSymbol("only") ),
+    sym_except ( m_symbolTable.newSymbol("except") ),
+    sym_prefix ( m_symbolTable.newSymbol("prefix") )
 {
   assert( &symbolTable == &kw.symbolTable );
 

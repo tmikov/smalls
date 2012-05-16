@@ -59,10 +59,21 @@ private:
   };
 
   SymbolTable & m_symbolTable;
-  Scope * m_systemScope;
+  Scope * const m_systemScope;
   AbstractErrorReporter & m_errors;
-
   Mark * const m_antiMark;
+
+  Symbol * const sym_library;
+  Symbol * const sym_export;
+  Symbol * const sym_import;
+  Symbol * const sym_rename;
+  Symbol * const sym_for;
+  Symbol * const sym_expand;
+  Symbol * const sym_meta;
+  Symbol * const sym_only;
+  Symbol * const sym_except;
+  Symbol * const sym_prefix;
+
   ast::Frame * m_systemFrame; // the frame containing the system symbols
   Binding * m_bindBegin; // the "begin" system binding. We need it occasionally
   Binding * m_unspec;
