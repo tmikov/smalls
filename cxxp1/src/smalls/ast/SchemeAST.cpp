@@ -144,8 +144,12 @@ void AstBody::toStream ( std::ostream & os ) const
       os << *defn.first;
     else
       os << "<unused>";
-    os << " ";
-    os << *defn.second;
+
+    if (defn.second)
+    {
+      os << " ";
+      os << *defn.second;
+    }
 
     os << ')';
   }

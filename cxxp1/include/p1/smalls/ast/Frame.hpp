@@ -43,7 +43,44 @@ public:
   {
     ListEntry::debugClear();
     this->data = NULL;
+    m_exported = false;
+    m_initialized = false;
+    m_assigned = false;
+    m_used = false;
+    m_assignable = true;
   }
+
+  void setInitialized ()
+  {
+    m_initialized = true;
+  }
+  void setAssigned ()
+  {
+    assert( m_assignable );
+    m_assigned = true;
+  }
+  void setUsed ()
+  {
+    m_used = true;
+  }
+  void setAssignable ( bool v )
+  {
+    assert( (v || !m_assigned) && "Making an assigned variable non-assignable" );
+    m_assignable = v;
+  }
+
+  bool exported () const { return m_exported; }
+  bool initialized () const { return m_initialized; }
+  bool assigned () const { return m_assigned; }
+  bool used () const { return m_used; }
+  bool assignable () const { return m_assignable; }
+
+private:
+  unsigned m_exported : 1;
+  unsigned m_initialized : 1;
+  unsigned m_assigned : 1;
+  unsigned m_used     : 1;
+  unsigned m_assignable : 1;
 };
 
 std::ostream & operator << ( std::ostream & os, const Variable & var );

@@ -87,9 +87,12 @@ ast::AstBody * SchemeParser::compileBody ( SchemeParser::Context * ctx, Syntax *
 
   BOOST_FOREACH( DeferredDefine & defn, ctx->defnList )
   {
+    if (defn.first && defn.second)
+      defn.first->var()->setInitialized();
+
     body->defs().push_back( ast::AstBody::Definition(
       defn.first ? defn.first->var() : NULL,
-      compileExpression( ctx, defn.second )
+      defn.second ? compileExpression( ctx, defn.second ) : NULL
     ));
   }
 
@@ -260,7 +263,7 @@ void SchemeParser::recordDefine ( SchemeParser::Context * ctx, SyntaxPair * form
 
   Syntax * value;
   if (isa<SyntaxNil>(restp))
-    value = new SyntaxBinding( restp->coords, m_unspec );
+    value = NULL;
   else
   {
     value = restp->car();
@@ -417,7 +420,10 @@ ast::Ast * SchemeParser::compileBinding ( Context * ctx, Binding * bnd, Syntax *
   if (bnd != m_unspec)
   {
     if (bnd->kind() == BindingKind::VAR)
+    {
+      bnd->var()->setUsed();
       return new ast::AstVar(exprForCoords->coords, bnd->var());
+    }
     else
       error( exprForCoords, "Undefined variable '%s'", bnd->sym->name );
   }
@@ -518,6 +524,14 @@ ast::Ast * SchemeParser::compileSetBang ( SchemeParser::Context * ctx, SyntaxPai
     return makeUnspecified(setPair);
   }
 
+  if (!bnd->var()->assignable())
+  {
+    error( ps[0], "Variable '%s' cannot be assigned", bnd->sym->name );
+    return makeUnspecified(setPair);
+  }
+
+  bnd->var()->setAssigned();
+
   // Value
   //
   ast::Ast * value = compileExpression( ctx, ps[1] );
@@ -568,6 +582,7 @@ ast::Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair
     Binding * bnd;
     bindSyntaxSymbol( bnd, paramScope, ss );
     bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
+    bnd->var()->setInitialized();
     listParam = bnd->var();
   }
   else if (SyntaxPair * params = dyn_cast<SyntaxPair>(p0)) // a list of formal parameters
@@ -581,6 +596,7 @@ ast::Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair
         if (bindSyntaxSymbol( bnd, paramScope, ss ))
         {
           bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
+          bnd->var()->setInitialized();
           vars->push_back( bnd->var() );
         }
         else
@@ -607,6 +623,7 @@ ast::Ast * SchemeParser::compileLambda ( SchemeParser::Context * ctx, SyntaxPair
         if (bindSyntaxSymbol( bnd, paramScope, ss ))
         {
           bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
+          bnd->var()->setInitialized();
           listParam = bnd->var();
         }
         else
@@ -724,6 +741,7 @@ ast::Ast * SchemeParser::compileBasicLet ( SchemeParser::Context * ctx, SyntaxPa
       if (bindSyntaxSymbol( bnd, paramScope, ss ))
       {
         bnd->bindVar( paramFrame->newVariable( bnd->sym->name, ss->coords ) );
+        bnd->var()->setInitialized();
         vars->push_back( bnd->var() );
       }
       else
