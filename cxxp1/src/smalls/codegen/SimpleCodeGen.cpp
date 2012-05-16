@@ -110,7 +110,7 @@ SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, AstModule
   assignAddresses( 0, sysfr );
   os << "static reg_t g_sysframe[];\n";
   os << "\n";
-  for ( AstFrame::VariableList::iterator it = sysfr->vars().begin(), _e = sysfr->vars().end();
+  for ( AstFrame::iterator it = sysfr->begin(), _e = sysfr->end();
         it != _e; ++it )
   {
     unsigned addr = varData( it.operator->() )->addr;
@@ -119,7 +119,7 @@ SimpleCodeGen::Context * SimpleCodeGen::genSystem ( std::ostream & os, AstModule
   }
   os << "\n";
   os << "static reg_t g_sysframe[] = {\n";
-  for ( AstFrame::VariableList::iterator it = sysfr->vars().begin(), _e = sysfr->vars().end();
+  for ( AstFrame::iterator it = sysfr->begin(), _e = sysfr->end();
         it != _e; ++it )
   {
     unsigned addr = varData( it.operator->() )->addr;
@@ -339,8 +339,7 @@ std::string SimpleCodeGen::coords ( const SourceCoords & coords )
 void SimpleCodeGen::assignAddresses ( unsigned startAddr, AstFrame * frame )
 {
   // Assign addresses to all variables in the frame
-  for ( AstFrame::VariableList::iterator i = frame->vars().begin(), e = frame->vars().end();
-        i != e; ++i )
+  for ( AstFrame::iterator i = frame->begin(), e = frame->end(); i != e; ++i )
   {
     assert( i->data == NULL && "Variable already assigned an address" );
     i->data = new (GC) VarData( startAddr++ );

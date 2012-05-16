@@ -25,11 +25,6 @@
 
 namespace p1 {
 namespace smalls {
-  class Symbol;
-}}
-
-namespace p1 {
-namespace smalls {
 
 class AstVariable;
 class AstFrame;
@@ -54,6 +49,7 @@ std::ostream & operator << ( std::ostream & os, const AstVariable & var );
 
 class AstFrame : public gc
 {
+  typedef p1::CircularList<AstVariable> VariableList;
 public:
   AstFrame * const parent;
   int const level;
@@ -69,8 +65,9 @@ public:
 
   unsigned length () const { return m_varCount; };
 
-  typedef p1::CircularList<AstVariable> VariableList;
-  VariableList & vars () { return m_vars; }
+  typedef VariableList::iterator iterator;
+  iterator begin () { return m_vars.begin(); }
+  iterator end ()   { return m_vars.end(); }
 
 private:
   VariableList m_vars;
