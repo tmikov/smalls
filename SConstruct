@@ -41,8 +41,6 @@ env.CacheDir("_build-cache")
 if env['inherit_env']:
   env['ENV']=os.environ
 
-#env.Replace( CXX='clang' )
-
 if env['cross']:
   env['CC']="$cross-gcc"
   env['CXX']="$cross-g++"
