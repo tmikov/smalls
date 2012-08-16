@@ -174,6 +174,7 @@ protected:
     : Super( new ELEM[bufSize] ), m_bufCleaner( Super::m_buf ), m_bufSize(bufSize)
   {
     assert( bufSize > UNGET_LIMIT );
+    Super::m_head = Super::m_tail = Super::m_buf + UNGET_LIMIT;
   };
 
 public:
