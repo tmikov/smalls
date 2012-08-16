@@ -45,8 +45,8 @@ void UTF8StreamDecoder::doRead ( size_t toRead )
       if (avail != 0)
       {
         // Fill the small buffer and pad it with 0xFF
-        std::memset( buf, 0xFF, MAX_UTF8_LEN );
         std::memcpy( buf, m_in.head(), avail );
+        std::memset( buf + avail, 0xFF, MAX_UTF8_LEN - avail );
         from = buf;
         to = buf + avail;
       }
