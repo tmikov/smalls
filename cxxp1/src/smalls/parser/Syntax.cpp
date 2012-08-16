@@ -303,11 +303,15 @@ Syntax* SyntaxVector::getElement( unsigned i ) const
 
     m_wrappedData = new (GC) Syntax*[this->len];
     std::memset( m_wrappedData, 0, sizeof(m_wrappedData[0])*this->len );
-  }
-  else
-    wrappedElem = m_data[i]->wrap(this->mark);
 
-  return m_wrappedData[i] = wrappedElem;
+    m_wrappedData[i] = wrappedElem;
+  }
+  else if ((wrappedElem = m_wrappedData[i]) == NULL) // this element not yet lazily wrapped?
+    m_wrappedData[i] = wrappedElem = m_data[i]->wrap(this->mark);
+  else
+    assert( wrappedElem != NULL );
+
+  return wrappedElem;
 }
 
 
